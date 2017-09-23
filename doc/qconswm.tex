@@ -1,0 +1,234 @@
+\documentclass{ctexart}
+
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\title{基于平方守恒的全球浅水模型}
+\date{2017年9月21日}
+
+\begin{document}
+
+\maketitle
+
+\section{出发方程}
+
+\begin{align}
+	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u U}{\partial \lambda} + u \frac{\partial U}{\partial \lambda} + \frac{\partial v \cos{\varphi} U}{\partial \varphi} + v \cos{\varphi} \frac{\partial U}{\partial \varphi} \right) + f V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
+  \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u V}{\partial \lambda} + u \frac{\partial V}{\partial \lambda} + \frac{\partial v \cos{\varphi} V}{\partial \varphi} + v \cos{\varphi} \frac{\partial V}{\partial \varphi} \right) - f U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
+  \frac{\partial \phi}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial H U}{\partial \lambda} + \frac{\partial H V \cos{\varphi}}{\partial \varphi} \right)
+\end{align}
+其中$\varphi$是位势厚度，$\varphi_s$是地表位势抬升，$H = \sqrt{\varphi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\phi$是纬度。
+
+将待求变量组成向量形式
+\begin{align}
+  F = \left[
+    \begin{array}{c}
+      U \\
+      V \\
+      \varphi
+    \end{array}
+  \right]
+\end{align}
+方程右端项整理为包含平流项与科氏力的慢过程算子
+\begin{align}
+  L_s = \left[
+    \begin{array}{ccc}
+      L_a^u & f & 0 \\
+      - f & L_a^v & 0 \\
+      0 & 0 & L_a^\varphi
+    \end{array}
+  \right]
+\end{align}
+其中
+\begin{align}
+  L_a^u & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi}  \right) \\
+  L_a^v & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi} \right) \\
+  L_a^\varphi & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} \right)
+\end{align}
+包含重力项（梯度力项）的快过程算子
+\begin{align}
+  L_f = \left[
+    \begin{array}{ccc}
+      0 & 0 & L_g^u \\
+      0 & 0 & L_g^v \\
+      0 & 0 & 0
+    \end{array}
+  \right]
+\end{align}
+其中
+\begin{align}
+  L_g^u & = - \frac{H}{a \cos{\varphi}} \frac{\partial \cdot + \phi_s}{\partial \lambda} \\
+  L_g^v & = - \frac{H}{a} \frac{\partial \cdot + \phi_s}{\partial \varphi}
+\end{align}
+可见算子$L_s$和$L_f$是非线性算子。
+
+\section{快慢过程分裂方案}
+
+\begin{align}
+  \frac{\partial F}{\partial t} = - L_f F - L_s F
+\end{align}
+其中$L_f$是快过程，$L_s$是慢过程。
+
+设算子$L_f F$是为函数形式$G(F)$，$L_s F$为$S(F)$
+\begin{align}
+  \frac{\partial F}{\partial t} & = - G(F) - S(F) \label{eqn:一阶导数项表达式} \\
+  \frac{\partial^2 F}{\partial t^2} & = - G^\prime(F) \frac{\partial F}{\partial t} - S^\prime \frac{\partial F}{\partial t} = G^\prime G + S^\prime S + G^\prime S + S^\prime G \label{eqn:二阶导数项表达式}
+\end{align}
+根据Taylor展式，并做入下简记
+\begin{align*}
+  F(t_0) & = (F)^0 \\
+  F(t_0 + \Delta{t}) & = (F)^1 \\
+  \left. \frac{\partial F}{\partial t} \right|_{(F)^0} & = \left( \frac{\partial F}{\partial t} \right)^0 \\
+  \left. \frac{\partial^2 F}{\partial t^2} \right|_{(F)^0} & = \left( \frac{\partial^2 F}{\partial t^2} \right)^0 \\
+  G((F)^0) & = (G)^0 \\
+  G^\prime((F)^0) & = (G^\prime)^0 \\
+  S((F)^0) & = (S)^0 \\
+  S^\prime((F)^0) & = (S^\prime)^0
+\end{align*}
+则$F$在$t = t_0$附近可以展开为
+\begin{align}
+  (F)^1 = (F)^0 + \Delta{t} \left( \frac{\partial F}{\partial t} \right)^0 + \frac{\Delta{t}^2}{2} \left( \frac{\partial^2 F}{\partial t^2} \right)^0 + \mathcal{O} \left( \Delta{t}^3 \right)
+\end{align}
+代入（\ref{eqn:一阶导数项表达式}）和（\ref{eqn:二阶导数项表达式}）可得
+\begin{align}
+  (F)^1 = (F)^0 - \Delta{t} \left( (G)^0 + (S)^0 \right) + \frac{\Delta{t}^2}{2} \left( (G^\prime)^0 (G)^0 + (S^\prime)^0 (S)^0 + {\color{red} (G^\prime)^0 (S)^0 + (S^\prime)^0 (G)^0} \right) + \mathcal{O} \left( \Delta{t}^3 \right) \label{eqn:算子分裂等式}
+\end{align}
+算子分裂方案需要与此式相容才是具有二阶精度的方案，其中红色项是需要特别注意的交叉项。
+
+可以采取多种算子分裂模型
+\begin{enumerate}
+\item 守恒分裂1型（CSP-1）：一次快过程 + 一次慢过程
+\begin{align}
+  \frac{\partial P}{\partial t} & = - L_f P, (P)^0 = (F)^0 \\
+  \frac{\partial Q}{\partial t} & = - L_s Q, (Q)^0 = (P)^1
+\end{align}
+\item 守恒分裂2型（CSP-2）：一次快过程 + 两次慢过程
+\begin{align}
+  \frac{\partial Q}{\partial t} & = - \frac{1}{2} L_s Q, (Q)^0 = (F)^0 \\
+  \frac{\partial P}{\partial t} & = - L_f P, (P)^0 = (Q)^1 \\
+  \frac{\partial Q}{\partial t} & = - \frac{1}{2} L_s Q, (Q)^0 = (P)^1
+\end{align}
+\item 改进分裂模型（ISP）：一次快过程 + 两次慢过程
+\begin{align}
+  \frac{\partial P}{\partial t} & = - L_f P - L_s (F)^0, (P)^0 = (F)^0 \\
+  \frac{\partial Q}{\partial t} & = - L_s Q + L_s (F)^0, (Q)^0 = (P)^1
+\end{align}
+\end{enumerate}
+其中快过程可以再细分为任意多步。
+
+\subsection{CSP-1分裂模型}
+该模型首先将快过程积分一个时间步长：
+\begin{align}
+  \frac{\partial P}{\partial t} & = - L_f P, (P)^0 = (F)^0
+\end{align}
+\begin{align*}
+  \frac{\partial P}{\partial t} & = - G(Q) \\
+  \frac{\partial^2 P}{\partial t^2} & = G^\prime(Q) G(Q)
+\end{align*}
+得到$t_0 + \Delta{t}$时刻的值
+\begin{align}
+  (P)^1 & = (P)^0 + \Delta{t} \left( \frac{\partial P}{\partial t} \right)^0 + \frac{\Delta{t}^2}{2} \left( \frac{\partial^2 P}{\partial t^2} \right)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & = (F)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \label{eqn:CSP-1中P1表达式}
+\end{align}
+然后以$(P)^1$为初值将慢过程积分一个时间步：
+\begin{align}
+  \frac{\partial Q}{\partial t} = - L_s Q, (Q)^0 = (P)^1
+\end{align}
+\begin{align*}
+  \frac{\partial Q}{\partial t} & = - S(Q) \\
+  \frac{\partial^2 Q}{\partial t^2} & = S^\prime(Q) S(Q)
+\end{align*}
+得到$t_0 + \Delta{t}$时刻的最终值
+\begin{align}
+  (F)^1 & = (Q)^0 + \Delta{t} \left( \frac{\partial Q}{\partial t} \right)^0 + \frac{\Delta{t}^2}{2} \left( \frac{\partial^2 Q}{\partial t^2} \right)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & = (P)^1 - \Delta{t} {\color{red}S\left((P)^1\right)} + \frac{\Delta{t}^2}{2} {\color{blue}S^\prime\left((P)^1\right)} {\color{red}S\left((P)^1\right)} + \mathcal{O} \left( \Delta{t}^3 \right)
+\end{align}
+其中红蓝项体现了快过程对慢过程的影响，代入$(P)^1$表达式（\ref{eqn:CSP-1中P1表达式}），并以$(F)^0$做Taylor展开
+\begin{align}
+  {\color{red}S\left((P)^1\right)} & = S\left( (F)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \right) \nonumber \\
+  & = (S)^0 + (S^\prime)^0 \left( - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \right) + \mathcal{O} \left( \Delta{t}^2 \right) \nonumber \\
+  & = {\color{red}(S)^0 - \Delta{t} (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^2 \right)} \label{eqn:CSP-1中的SP} \\
+  {\color{blue}S^\prime\left((P)^1\right)} & = S^\prime \left( (F)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \right) \nonumber \\
+  & = {\color{blue}(S^\prime)^0 + \mathcal{O} \left( \Delta{t} \right)} \label{eqn:CSP-1中的S'P}
+\end{align}
+将（\ref{eqn:CSP-1中的SP}）和（\ref{eqn:CSP-1中的S'P}），以及（\ref{eqn:CSP-1中P1表达式}）代入上式得到
+\begin{align}
+  (F)^1 & = (F)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & - \Delta{t} \left( {\color{red}(S)^0 - \Delta{t} (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^2 \right)} \right) \nonumber \\
+  & + \frac{\Delta{t}^2}{2} \left( {\color{blue}(S^\prime)^0 + \mathcal{O} \left( \Delta{t} \right)} \right) \left( {\color{red}(S)^0 - \Delta{t} (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^2 \right)} \right) + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & = (F)^0 - \Delta{t} \left( (G)^0 + (S)^0 \right) + \frac{\Delta{t}^2}{2} \left( (G^\prime)^0 (G)^0 + (S^\prime)^0 (S)^0 \right) + \Delta{t}^2 (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right)
+\end{align}
+与（\ref{eqn:算子分裂等式}）相比较，虽然是相容的，但是算子交叉项不对应，因此时间精度是一阶。
+
+\subsection{CSP-2分裂模型}
+该模型首先以一半慢过程作用积分一个时间步长：
+\begin{align}
+  \frac{\partial Q}{\partial t} = - \frac{1}{2} L_s Q, (Q)^0 = (F)^0
+\end{align}
+\begin{align*}
+  \frac{\partial Q}{\partial t} & = - \frac{1}{2} S(Q) \\
+  \frac{\partial^2 Q}{\partial t^2} & = \frac{1}{4} S^\prime(Q) S(Q)
+\end{align*}
+得到$t_0 + \Delta{t}$时刻的值
+\begin{align}
+  (Q)^1 & = (Q)^0 + \Delta{t} \left( \frac{\partial Q}{\partial t} \right)^0 + \frac{\Delta{t}^2}{2} \left( \frac{\partial^2 Q}{\partial t^2} \right)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & = (F)^0 - \frac{\Delta{t}}{2} (S)^0 + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \label{eqn:CSP-2中Q1表达式}
+\end{align}
+然后以$(Q)^1$为初值将快过程积分一个时间步：
+\begin{align}
+  \frac{\partial P}{\partial t} = - L_f P, (P)^0 = (Q)^1
+\end{align}
+\begin{align*}
+  \frac{\partial P}{\partial t} & = - G(P) \\
+  \frac{\partial^2 P}{\partial t^2} & = G^\prime(P) G(P)
+\end{align*}
+得到$t_0 + \Delta{t}$时刻的值
+\begin{align}
+  (P)^1 & = (P)^0 + \Delta{t} \left( \frac{\partial P}{\partial t} \right)^0 + \frac{\Delta{t}^2}{2} \left( \frac{\partial^2 P}{\partial t^2} \right)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & = (Q)^1 - \Delta{t} {\color{red}G\left((Q)^1\right)} + \frac{\Delta{t}^2}{2} {\color{blue}G^\prime\left((Q)^1\right)} {\color{red}G\left((Q)^1\right)} + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber
+\end{align}
+其中红蓝项体现了慢过程对快过程的影响，代入$(Q)^1$表达式（\ref{eqn:CSP-2中Q1表达式}），并以$(F)^0$做Taylor展开
+\begin{align}
+  {\color{red}G\left((Q)^1\right)} & = G\left( (F)^0 - \frac{\Delta{t}}{2} (S)^0 + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \right) \nonumber \\
+  & = G\left((F)^0\right) + G^\prime\left((F)^0\right) \left( - \frac{\Delta{t}}{2} (S)^0 {\color{gray} + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 + \mathcal{O} \left( \Delta{t}^3 \right)} \right) + \mathcal{O} \left( \Delta{t}^2 \right) \nonumber \\
+  & = (G)^0 - \frac{\Delta{t}}{2} (G^\prime)^0 (S)^0 + \mathcal{O} \left( \Delta{t}^2 \right) \label{eqn:CSP-2中的GQ} \\
+  {\color{blue}G^\prime\left((Q)^1\right)} & = G^\prime \left( (F)^0 - \frac{\Delta{t}}{2} (S)^0 + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \right) \nonumber \\
+  & = (G^\prime)^0 + \mathcal{O} \left( \Delta{t} \right) \label{eqn:CSP-2中的G'Q}
+\end{align}
+将（\ref{eqn:CSP-2中的GQ}）和（\ref{eqn:CSP-2中的G'Q}），以及（\ref{eqn:CSP-2中Q1表达式}）代入上式得到
+\begin{align}
+  (P)^1 = (F)^0 - \frac{\Delta{t}}{2} (S)^0 + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (S)^0  + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \label{eqn:CSP-2中P1表达式}
+\end{align}
+最后以$(P)^1$为初值以一半慢过程作用积分一个时间步：
+\begin{align}
+  \frac{\partial Q}{\partial t} = - \frac{1}{2} L_s Q, (Q)^0 = (P)^1
+\end{align}
+\begin{align*}
+  \frac{\partial Q}{\partial t} & = - \frac{1}{2} S(Q) \\
+  \frac{\partial^2 Q}{\partial t^2} & = \frac{1}{4} S^\prime(Q) S(Q)
+\end{align*}
+得到$t_0 + \Delta{t}$时刻的最终值
+\begin{align}
+  (F)^1 & = (Q)^0 + \Delta{t} \left( \frac{\partial Q}{\partial t} \right)^0 + \frac{\Delta{t}^2}{2} \left( \frac{\partial^2 Q}{\partial t^2} \right)^0 + \mathcal{O} \left( \Delta{t}^3 \right) \nonumber \\
+  & = {\color{green}(P)^1} - \frac{\Delta{t}}{2} {\color{red}S\left((P)^1\right)} + \frac{\Delta{t}^2}{8} {\color{blue}S^\prime\left((P)^1\right)} {\color{red}S\left((P)^1\right)} + \mathcal{O} \left( \Delta{t}^3 \right)
+\end{align}
+其中红蓝项体现了快过程对慢过程的影响，代入$(P)^1$的表示式（\ref{eqn:CSP-2中P1表达式}），并以$(F)^0$做Taylor展开
+\begin{align}
+  {\color{red}S\left((P)^1\right)} & = S\left( (F)^0 - \frac{\Delta{t}}{2} (S)^0 - \Delta{t} (G)^0 {\color{gray}+ \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (S)^0  + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right)} \right) \nonumber \\
+  & = (S)^0 + (S^\prime)^0 \left( - \frac{\Delta{t}}{2} (S)^0 - \Delta{t} (G)^0 + {\color{gray}\mathcal{O} \left( \Delta{t}^2 \right)} \right) + \mathcal{O} \left( \Delta{t}^2 \right) \nonumber \\
+  & = {\color{red}(S)^0 - \frac{\Delta{t}}{2} (S^\prime)^0 (S)^0 - \Delta{t} (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^2 \right)} \label{eqn:CSP-2中的SP} \\
+  {\color{blue}S^\prime\left((P)^1\right)} & = S^\prime\left( (F)^0 {\color{gray}- \frac{\Delta{t}}{2} (S)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (S)^0  + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right)} \right) \nonumber \\
+  & = {\color{blue}(S^\prime)^0 + \mathcal{O} \left( \Delta{t} \right)} \label{eqn:CSP-2中的S'P}
+\end{align}
+将（\ref{eqn:CSP-2中的SP}）和（\ref{eqn:CSP-2中的S'P}），以及（\ref{eqn:CSP-2中P1表达式}）代入上式得到
+\begin{align}
+  (F)^1 & = {\color{green}(F)^0 - \frac{\Delta{t}}{2} (S)^0 + \frac{\Delta{t}^2}{8} (S^\prime)^0 (S)^0 - \Delta{t} (G)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (S)^0 + \frac{\Delta{t}^2}{2} (G^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right)} \nonumber \\
+  & {\color{red}- \frac{\Delta{t}}{2} (S)^0 + \frac{\Delta{t}^2}{4} (S^\prime)^0 (S)^0 + \frac{\Delta{t}^2}{2} (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^3 \right)} \nonumber \\
+  & + \frac{\Delta{t}^2}{8} \left( {\color{blue}(S^\prime)^0 + \mathcal{O} \left( \Delta{t} \right)} \right) \left( {\color{red}(S)^0} {\color{gray}- \frac{\Delta{t}}{2} (S^\prime)^0 (S)^0 - \Delta{t} (S^\prime)^0 (G)^0 + \mathcal{O} \left( \Delta{t}^2 \right)} \right) \nonumber \\
+  & = (F)^0 - \Delta{t} \left( (S)^0 + (G)^0 \right) + \frac{\Delta{t}^2}{2} \left( (S^\prime)^0 (S)^0 + (G^\prime)^0 (G)^0 + (G^\prime)^0 (S)^0 + (S^\prime)^0 (G)^0 \right) + \mathcal{O} \left( \Delta{t^3} \right) \nonumber
+\end{align}
+上式与（\ref{eqn:算子分裂等式}）相容，且具有二阶时间精度。
+
+\end{document}

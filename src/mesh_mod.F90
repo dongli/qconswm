@@ -1,0 +1,81 @@
+module mesh_mod
+
+  implicit none
+
+  real, parameter :: pi = atan(1.0) * 4.0
+  real, parameter :: rad_to_deg = 180.0 / pi
+  real, parameter :: deg_to_rad = pi / 180.0
+
+  type mesh_type
+    integer num_full_lon
+    integer num_half_lon
+    integer num_full_lat
+    integer num_half_lat
+    real dlon
+    real dlat
+    real, allocatable :: full_lon(:)
+    real, allocatable :: half_lon(:)
+    real, allocatable :: full_lat(:)
+    real, allocatable :: half_lat(:)
+    real, allocatable :: full_cos_lat(:)
+    real, allocatable :: half_cos_lat(:)
+    real, allocatable :: full_sin_lat(:)
+    real, allocatable :: half_sin_lat(:)
+  end type mesh_type
+
+  type(mesh_type) mesh
+
+contains
+
+  subroutine mesh_init(num_lon, num_lat)
+
+    integer, intent(in) :: num_lon
+    integer, intent(in) :: num_lat
+
+    integer i, j
+
+    mesh%num_full_lon = num_lon
+    mesh%num_half_lon = num_lon
+    mesh%num_full_lat = num_lat
+    mesh%num_half_lat = num_lat - 1
+
+    allocate(mesh%full_lon(mesh%num_full_lon))
+    allocate(mesh%half_lon(mesh%num_half_lon))
+    allocate(mesh%full_lat(mesh%num_full_lat))
+    allocate(mesh%half_lat(mesh%num_half_lat))
+    allocate(mesh%full_cos_lat(mesh%num_full_lat))
+    allocate(mesh%half_cos_lat(mesh%num_half_lat))
+    allocate(mesh%full_sin_lat(mesh%num_full_lat))
+    allocate(mesh%half_sin_lat(mesh%num_half_lat))
+
+    mesh%dlon = 2 * pi / mesh%num_full_lon
+    do i = 1, mesh%num_full_lon
+      mesh%full_lon(i) = (i - 1) * mesh%dlon
+      mesh%half_lon(i) = mesh%full_lon(i) + 0.5 * mesh%dlon
+    end do
+
+    mesh%dlat = pi / mesh%num_half_lat
+    do j = 1, mesh%num_half_lat
+      mesh%full_lat(j) = - 0.5 * pi + (j - 1) * mesh%dlat
+      mesh%half_lat(j) = mesh%full_lat(j) + 0.5 * mesh%dlat
+      mesh%full_cos_lat(j) = cos(mesh%full_lat(j))
+      mesh%half_cos_lat(j) = cos(mesh%half_lat(j))
+      mesh%full_sin_lat(j) = sin(mesh%full_lat(j))
+      mesh%half_sin_lat(j) = sin(mesh%half_lat(j))
+      print *, j, mesh%full_cos_lat(j), mesh%half_cos_lat(j)
+    end do
+    mesh%full_lat(mesh%num_full_lat) = 0.5 * pi
+    mesh%full_cos_lat(mesh%num_full_lat) = cos(mesh%full_lat(mesh%num_full_lat))
+
+  end subroutine mesh_init
+
+  subroutine mesh_final()
+
+    if (allocated(mesh%full_lon)) deallocate(mesh%full_lon)
+    if (allocated(mesh%full_lat)) deallocate(mesh%full_lat)
+    if (allocated(mesh%half_lon)) deallocate(mesh%half_lon)
+    if (allocated(mesh%half_lat)) deallocate(mesh%half_lat)
+
+  end subroutine mesh_final
+
+end module mesh_mod
