@@ -7,6 +7,7 @@ set (CMAKE_Fortran_FLAGS "-fdefault-real-8")
 set (source_files
   "src/params_mod.F90"
   "src/mesh_mod.F90"
+  "src/parallel_mod.F90"
   "src/dycore_mod.F90"
   "src/qconswm.F90"
 )

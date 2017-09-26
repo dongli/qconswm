@@ -1,10 +1,14 @@
 module mesh_mod
 
+  use params_mod
+
   implicit none
 
-  real, parameter :: pi = atan(1.0) * 4.0
-  real, parameter :: rad_to_deg = 180.0 / pi
-  real, parameter :: deg_to_rad = pi / 180.0
+  private
+
+  public mesh
+  public mesh_init
+  public mesh_final
 
   type mesh_type
     integer num_full_lon
@@ -27,10 +31,7 @@ module mesh_mod
 
 contains
 
-  subroutine mesh_init(num_lon, num_lat)
-
-    integer, intent(in) :: num_lon
-    integer, intent(in) :: num_lat
+  subroutine mesh_init()
 
     integer i, j
 
@@ -62,10 +63,12 @@ contains
       mesh%half_cos_lat(j) = cos(mesh%half_lat(j))
       mesh%full_sin_lat(j) = sin(mesh%full_lat(j))
       mesh%half_sin_lat(j) = sin(mesh%half_lat(j))
-      print *, j, mesh%full_cos_lat(j), mesh%half_cos_lat(j)
     end do
-    mesh%full_lat(mesh%num_full_lat) = 0.5 * pi
-    mesh%full_cos_lat(mesh%num_full_lat) = cos(mesh%full_lat(mesh%num_full_lat))
+    mesh%full_lat(num_lat) = 0.5 * pi
+    mesh%full_cos_lat(num_lat) = cos(mesh%full_lat(num_lat))
+    mesh%full_sin_lat(num_lat) = sin(mesh%full_lat(num_lat))
+
+    write(6, *) '[Notice]: Mesh module is initialized.'
 
   end subroutine mesh_init
 
@@ -75,6 +78,8 @@ contains
     if (allocated(mesh%full_lat)) deallocate(mesh%full_lat)
     if (allocated(mesh%half_lon)) deallocate(mesh%half_lon)
     if (allocated(mesh%half_lat)) deallocate(mesh%half_lat)
+
+    write(6, *) '[Notice]: Mesh module is finalized.'
 
   end subroutine mesh_final
 

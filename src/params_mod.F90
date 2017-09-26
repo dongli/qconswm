@@ -2,6 +2,13 @@ module params_mod
 
   implicit none
 
+  ! Contant parameters
+  real, parameter :: pi = atan(1.0) * 4.0
+  real, parameter :: rad_to_deg = 180.0 / pi
+  real, parameter :: deg_to_rad = pi / 180.0
+  real, parameter :: omega = 2.0 * pi / 86400.0
+  real, parameter :: radius = 6.371e6
+
   integer num_lon
   integer num_lat
 

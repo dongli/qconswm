@@ -15,11 +15,19 @@
 \section{出发方程}
 
 \begin{align}
-	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u U}{\partial \lambda} + u \frac{\partial U}{\partial \lambda} + \frac{\partial v \cos{\varphi} U}{\partial \varphi} + v \cos{\varphi} \frac{\partial U}{\partial \varphi} \right) + f V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
-  \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u V}{\partial \lambda} + u \frac{\partial V}{\partial \lambda} + \frac{\partial v \cos{\varphi} V}{\partial \varphi} + v \cos{\varphi} \frac{\partial V}{\partial \varphi} \right) - f U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
+	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) + f V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
+  \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) - f U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
   \frac{\partial \phi}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial H U}{\partial \lambda} + \frac{\partial H V \cos{\varphi}}{\partial \varphi} \right)
 \end{align}
-其中$\varphi$是位势厚度，$\varphi_s$是地表位势抬升，$H = \sqrt{\varphi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\phi$是纬度。
+其中$\phi$是位势厚度，$\phi_s$是地表位势抬升，$H = \sqrt{\phi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\varphi$是纬度。注意前两式中的平流项采用的是
+\begin{align}
+  2 \frac{\partial u \cdot}{\partial \lambda} - \cdot \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} - \cdot \frac{\partial v \cos{\varphi}}{\partial \varphi}
+\end{align}
+而不是
+\begin{align}
+  \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi}
+\end{align}
+这是由于虽然两式在连续情形下等价，但第二式在Arakawa-C网格下进行差分离散无法满足反对称性要求，而第一式可以满足此要求，具体推导参见附录\ref{app:平流项的反对称性}。
 
 将待求变量组成向量形式
 \begin{align}
@@ -63,6 +71,50 @@
   L_g^v & = - \frac{H}{a} \frac{\partial \cdot + \phi_s}{\partial \varphi}
 \end{align}
 可见算子$L_s$和$L_f$是非线性算子。
+
+\section{空间离散}
+采用等间距的经纬网格，变量布置采用Arakawa-C网格，即纬向风分量位于纬向半格点$\left( i + \frac{1}{2}, j \right)$，经向风分量位于经向半格点$\left( i, j + \frac{1}{2} \right)$，位势厚度等变量位于整网格点$\left( i, j \right)$。
+\begin{align}
+  H_{i+\frac{1}{2},j} & = \frac{H_{i,j} + H_{i+1,j}}{2}, \nonumber \\
+  H_{i,j+\frac{1}{2}} & = \frac{H_{i,j} + H_{i,j+1}}{2}, \nonumber \\
+  U_{i+\frac{1}{2},j} & = H_{i+\frac{1}{2},j} u_{i+\frac{1}{2},j} \nonumber \\
+  V_{i,j+\frac{1}{2}} & = H_{i,j+\frac{1}{2}} v_{i,j+\frac{1}{2}} \nonumber
+\end{align}
+对出发方程右端微分项采用中央差离散，注意差分时应该采用一个格距，即将不同位置的变量平均到差分位置上，如由$i-\frac{1}{2}$和$i+\frac{1}{2}$到$i$
+\begin{align}
+  \frac{\partial u U}{\partial \lambda} & \approx \frac{1}{4 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right)}_{u_{i+1,j}} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i+\frac{3}{2},j} \right)}_{U_{i+1,j}} - \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right)}_{u_{i,j}} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i-\frac{1}{2},j} \right)}_{U_{i,j}} \right] \nonumber \\
+  U \frac{\partial u}{\partial \lambda} & \approx \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right)}_{u_{i+1,j}} - \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right)}_{u_{i,j}} \right] = \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\lambda}} \left( u_{i+\frac{3}{2},j} - u_{i-\frac{1}{2},j} \right) \nonumber \\
+  \frac{\partial v \cos{\varphi} U}{\partial \varphi} & \approx \frac{1}{4 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j+\frac{1}{2}}^*} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i+\frac{1}{2},j+1} \right)}_{U_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j-\frac{1}{2}}^*} \underbrace{\left( U_{i+\frac{1}{2},j-1} + U_{i+\frac{1}{2},j} \right)}_{U_{i+\frac{1}{2},j-\frac{1}{2}}} \right] \nonumber \\
+  U \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j+\frac{1}{2}}^*} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j-\frac{1}{2}}^*} \right] \nonumber \\
+  \frac{\partial u V}{\partial \lambda} & \approx \frac{1}{4 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right)}_{u_{i+\frac{1}{2},j+\frac{1}{2}}} \underbrace{\left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right)}_{V_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right)}_{u_{i-\frac{1}{2},j+\frac{1}{2}}} \underbrace{\left( V_{i-1,j+\frac{1}{2}} + V_{i,j+\frac{1}{2}} \right)}_{V_{i-\frac{1}{2},j+\frac{1}{2}}} \right] \nonumber \\
+  V \frac{\partial u}{\partial \lambda} & \approx \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right)}_{u_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right)}_{u_{i-\frac{1}{2},j+\frac{1}{2}}} \right] \nonumber \\
+  \frac{\partial v \cos{\varphi} V}{\partial \varphi} & \approx \frac{1}{4 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right)}_{v_{i,j+1}^*} \underbrace{\left( V_{i,j+\frac{1}{2}} + V_{i,j+\frac{3}{2}} \right)}_{V_{i,j+1}} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right)}_{v_{i,j}^*} \underbrace{\left( V_{i,j-\frac{1}{2}} + V_{i,j+\frac{1}{2}} \right)}_{V_{i,j}} \right] \nonumber \\
+  V \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right)}_{v_{i,j+1}^*} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right)}_{v_{i,j}^*} \right] = \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\varphi}} \left( v_{i,j+\frac{3}{2}}^* - v_{i,j-\frac{1}{2}}^* \right) \nonumber
+\end{align}
+其中$v^* = v \cos{\varphi}$为方便推导做的简记。
+\begin{align}
+  2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right) U_{i+\frac{3}{2},j} - \left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right) U_{i-\frac{1}{2},j} \right] \\
+  2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right) U_{i+\frac{1}{2},j+1} - \left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right) U_{i+\frac{1}{2},j-1} \right] \\
+  2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right) V_{i+1,j+\frac{1}{2}} - \left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right) V_{i-1,j+\frac{1}{2}} \right] \\
+  2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right) V_{i,j+\frac{3}{2}} - \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) V_{i,j-\frac{1}{2}} \right]
+\end{align}
+
+\begin{align}
+  H \frac{\partial \phi + \phi_s}{\partial \lambda} & \approx \frac{H_{i,j} + H_{i+1,j}}{2 \Delta{\lambda}} \left( \phi_{i+1,j} - \phi_{i,j} + {\phi_s}_{i+1,j} - {\phi_s}_{i,j} \right) \\
+  H \frac{\partial \phi + \phi_s}{\partial \varphi} & \approx \frac{H_{i,j} + H_{i,j+1}}{2 \Delta{\varphi}} \left( \phi_{i,j+1} - \phi_{i,j} + {\phi_s}_{i,j+1} - {\phi_s}_{i,j} \right)
+\end{align}
+
+\begin{align}
+  f V & \approx \frac{1}{4} \left[ f_{j-\frac{1}{2}} \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) + f_{j+\frac{1}{2}} \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) \right] \\
+  f U & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \right]
+\end{align}
+
+\begin{align}
+  \frac{\partial H U}{\partial \lambda} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \underbrace{\left( H_{i,j} + H_{i+1,j} \right)}_{H_{i+\frac{1}{2},j}} U_{i+\frac{1}{2},j} - \underbrace{\left( H_{i-1,j} + H_{i,j} \right)}_{H_{i-\frac{1}{2},j}} U_{i-\frac{1}{2},j} \right] \\
+  \frac{\partial H V \cos{\varphi}}{\partial \varphi} & \approx \frac{1}{\Delta{\varphi}} \left[ \underbrace{\left( H_{i,j}^* + H_{i,j+1}^* \right)}_{H_{i,j+\frac{1}{2}}^*} V_{i,j+\frac{1}{2}} - \underbrace{\left( H_{i,j-1}^* + H_{i,j}^* \right)}_{H_{i,j-\frac{1}{2}}^*} V_{i,j-\frac{1}{2}} \right]
+\end{align}
+
+\section{极点离散}
 
 \section{快慢过程分裂方案}
 
@@ -230,5 +282,35 @@
   & = (F)^0 - \Delta{t} \left( (S)^0 + (G)^0 \right) + \frac{\Delta{t}^2}{2} \left( (S^\prime)^0 (S)^0 + (G^\prime)^0 (G)^0 + (G^\prime)^0 (S)^0 + (S^\prime)^0 (G)^0 \right) + \mathcal{O} \left( \Delta{t^3} \right) \nonumber
 \end{align}
 上式与（\ref{eqn:算子分裂等式}）相容，且具有二阶时间精度。
+
+\begin{appendix}
+
+\section{平流项的反对称性}
+\label{app:平流项的反对称性}
+考察如下两种等价连续形式在Arakawa-C网格下离散格式的反对称性
+\begin{align}
+  2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \\
+  \frac{\partial u U}{\partial \lambda} + u \frac{\partial U}{\partial \lambda} + \frac{\partial v \cos{\varphi} U}{\partial \varphi} + v \cos{\varphi} \frac{\partial U}{\partial \varphi}
+\end{align}
+\begin{align}
+  \frac{\partial u U}{\partial \lambda} & = \frac{1}{4 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i+\frac{3}{2}} \right) - \left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i-\frac{1}{2}} \right) \right] \nonumber \\
+  U \frac{\partial u}{\partial \lambda} & = \frac{U_{i+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} \right) - \left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} \right) \right] = \frac{U_{i+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ u_{i+\frac{3}{2}} - u_{i-\frac{1}{2}} \right] \nonumber \\
+  2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} & = \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i+\frac{3}{2}} \right) - \left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i-\frac{1}{2}} \right) \right. \nonumber \\
+  & \quad\quad\quad \left. - u_{i+\frac{3}{2}} U_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} U_{i+\frac{1}{2}} \right] \nonumber \\
+  & = \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} \right) U_{i+\frac{3}{2}} - \left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} \right) U_{i-\frac{1}{2}} \right] \label{eqn:平流项第一种形式离散格式}
+\end{align}
+\begin{align}
+  \frac{\partial u U}{\partial \lambda} & = \frac{1}{4 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i+\frac{3}{2}} \right) - \left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i-\frac{1}{2}} \right) \right] \nonumber \\
+  u \frac{\partial U}{\partial \lambda} & = \frac{u_{i+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ \left( U_{i+\frac{1}{2}} + U_{i+\frac{3}{2}} \right) - \left( U_{i+\frac{1}{2}} + U_{i-\frac{1}{2}} \right) \right] = \frac{u_{i+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ U_{i+\frac{3}{2}} - U_{i-\frac{1}{2}} \right] \nonumber \\
+  \frac{\partial u U}{\partial \lambda} + u \frac{\partial U}{\partial \lambda} & = \frac{1}{2 \Delta{\lambda}} \left[ \frac{\left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i+\frac{3}{2}} \right)}{2} - \frac{\left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} \right) \left( U_{i+\frac{1}{2}} + U_{i-\frac{1}{2}} \right)}{2} \right. \nonumber \\
+  & \quad\quad\quad \left. - u_{i+\frac{1}{2}} U_{i+\frac{3}{2}} + u_{i+\frac{1}{2}} U_{i-\frac{1}{2}} \right] \nonumber \\
+  & \quad\quad\quad\quad\quad\quad  \frac{1}{2} \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} - u_{i+\frac{1}{2}} - u_{i-\frac{1}{2}} \right) U_{i+\frac{1}{2}} \nonumber \\{}
+  & \quad\quad\quad\quad\quad\quad  \frac{1}{2} \left( u_{i+\frac{1}{2}} + u_{i+\frac{3}{2}} - 2 u_{i+\frac{1}{2}} \right) U_{i+\frac{3}{2}} \nonumber \\
+  & \quad\quad\quad\quad\quad\quad  - \frac{1}{2} \left( u_{i+\frac{1}{2}} + u_{i-\frac{1}{2}} - 2 u_{i+\frac{1}{2}} \right) U_{i-\frac{1}{2}} \nonumber \\
+  & = \frac{1}{4 \Delta{\lambda}} \left[ \left( u_{i+\frac{3}{2}} - u_{i+\frac{1}{2}} \right) U_{i+\frac{3}{2}} + {\color{red}\left( u_{i+\frac{3}{2}} - u_{i-\frac{1}{2}} \right) U_{i+\frac{1}{2}}} + \left( u_{i+\frac{1}{2}} - u_{i-\frac{1}{2}} \right) U_{i-\frac{1}{2}} \right] \label{eqn:平流项第二种形式离散格式}
+\end{align}
+由此可见（\ref{eqn:平流项第一种形式离散格式}）可以保证反对称性，而（\ref{eqn:平流项第二种形式离散格式}）多了$U_{i+\frac{1}{2}}$项，无法满足反对称性要求。
+
+\end{appendix}
 
 \end{document}
