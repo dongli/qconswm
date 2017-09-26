@@ -43,11 +43,6 @@ contains
 
   subroutine dycore_init()
 
-    integer full_lon_lb, half_lon_lb
-    integer full_lon_ub, half_lon_ub
-    integer full_lat_lb, half_lat_lb
-    integer full_lat_ub, half_lat_ub
-    integer time_lb, time_ub
     integer j
 
     call mesh_init()
@@ -76,25 +71,13 @@ contains
       coef%half_dlat(j) = 2.0 * radius * mesh%dlat * mesh%half_cos_lat(j)
     end do
 
-    full_lon_lb = parallel%full_lon_start_idx - parallel%lon_halo_width
-    full_lon_ub = parallel%full_lon_end_idx + parallel%lon_halo_width
-    half_lon_lb = parallel%half_lon_start_idx - parallel%lon_halo_width
-    half_lon_ub = parallel%half_lon_end_idx + parallel%lon_halo_width
-    full_lat_lb = parallel%full_lat_start_idx - parallel%lat_halo_width
-    full_lat_ub = parallel%full_lat_end_idx + parallel%lat_halo_width
-    half_lat_lb = parallel%half_lat_start_idx - parallel%lat_halo_width
-    half_lat_ub = parallel%half_lat_end_idx + parallel%lat_halo_width
-    time_lb = 1
-    time_ub = 2
-
-    allocate(state%u(half_lon_lb:half_lon_ub,full_lat_lb:full_lat_ub,time_lb:time_ub))
-    allocate(state%v(full_lon_lb:full_lon_ub,half_lat_lb:half_lat_ub,time_lb:time_ub))
-    allocate(state%gd(full_lon_lb:full_lon_ub,full_lat_lb:full_lat_ub,time_lb:time_ub))
-    allocate(state%ghs(full_lon_lb:full_lon_ub,full_lat_lb:full_lat_ub))
-
-    allocate(ut(half_lon_lb:half_lon_ub,full_lat_lb:full_lat_ub,time_lb:time_ub))
-    allocate(vt(full_lon_lb:full_lon_ub,half_lat_lb:half_lat_ub,time_lb:time_ub))
-    allocate(gdt(full_lon_lb:full_lon_ub,full_lat_lb:full_lat_ub,time_lb:time_ub))
+    call parallel_allocate(state%u, half_lon=.true.)
+    call parallel_allocate(state%v, half_lat=.true.)
+    call parallel_allocate(state%gd)
+    call parallel_allocate(state%ghs)
+    call parallel_allocate(ut, half_lon=.true.)
+    call parallel_allocate(vt, half_lat=.true.)
+    call parallel_allocate(gdt)
 
     write(6, *) '[Notice]: Dycore module is initialized.'
 
@@ -137,7 +120,8 @@ contains
       end do
     end do
 
-
+    ! TODO: Should we only fill right and top halo?
+    call parallel_fill_halo(gdt(:,:,time_idx))
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx

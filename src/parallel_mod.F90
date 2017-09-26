@@ -10,6 +10,8 @@ module parallel_mod
   public parallel
   public parallel_init
   public parallel_final
+  public parallel_allocate
+  public parallel_fill_halo
 
   type parallel_params_type
     integer full_lon_start_idx
@@ -22,18 +24,27 @@ module parallel_mod
     integer half_lat_end_idx
     integer lon_halo_width
     integer lat_halo_width
+    integer full_lon_lb, half_lon_lb
+    integer full_lon_ub, half_lon_ub
+    integer full_lat_lb, half_lat_lb
+    integer full_lat_ub, half_lat_ub
   end type parallel_params_type
 
   type(parallel_params_type) parallel
+
+  interface parallel_allocate
+    module procedure parallel_allocate_1
+    module procedure parallel_allocate_2
+  end interface parallel_allocate
 
 contains
 
   subroutine parallel_init()
 
     parallel%full_lon_start_idx = 1
-    parallel%full_lat_end_idx = mesh%num_full_lon
+    parallel%full_lon_end_idx = mesh%num_full_lon
     parallel%half_lon_start_idx = 1
-    parallel%half_lat_end_idx = mesh%num_half_lon
+    parallel%half_lon_end_idx = mesh%num_half_lon
     parallel%full_lat_start_idx = 1
     parallel%full_lat_end_idx = mesh%num_full_lat
     parallel%half_lat_start_idx = 1
@@ -42,10 +53,74 @@ contains
     parallel%lon_halo_width = 1
     parallel%lat_halo_width = 1
 
+    parallel%full_lon_lb = parallel%full_lon_start_idx - parallel%lon_halo_width
+    parallel%full_lon_ub = parallel%full_lon_end_idx + parallel%lon_halo_width
+    parallel%half_lon_lb = parallel%half_lon_start_idx - parallel%lon_halo_width
+    parallel%half_lon_ub = parallel%half_lon_end_idx + parallel%lon_halo_width
+    parallel%full_lat_lb = parallel%full_lat_start_idx - parallel%lat_halo_width
+    parallel%full_lat_ub = parallel%full_lat_end_idx + parallel%lat_halo_width
+    parallel%half_lat_lb = parallel%half_lat_start_idx - parallel%lat_halo_width
+    parallel%half_lat_ub = parallel%half_lat_end_idx + parallel%lat_halo_width
+
+    write(6, *) '[Notice]: Parallel module is initialized.'
+
   end subroutine parallel_init
 
   subroutine parallel_final()
 
+    write(6, *) '[Notice]: Parallel module is finalized.'
+
   end subroutine parallel_final
+
+  subroutine parallel_allocate_1(field, half_lon, half_lat)
+
+    real, intent(out), allocatable ::  field(:,:)
+    logical, intent(in), optional :: half_lon
+    logical, intent(in), optional :: half_lat
+
+    if (present(half_lon) .and. half_lon .and. present(half_lat) .and. half_lat) then
+      allocate(field(parallel%half_lon_lb:parallel%half_lon_ub,parallel%half_lat_lb:parallel%half_lat_ub))
+    else if (present(half_lon) .and. half_lon) then
+      allocate(field(parallel%half_lon_lb:parallel%half_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub))
+    else if (present(half_lat) .and. half_lat) then
+      allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%half_lat_lb:parallel%half_lat_ub))
+    else
+      allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub))
+    end if
+
+  end subroutine parallel_allocate_1
+
+  subroutine parallel_allocate_2(field, half_lon, half_lat)
+
+    real, intent(out), allocatable ::  field(:,:,:)
+    logical, intent(in), optional :: half_lon
+    logical, intent(in), optional :: half_lat
+
+    integer time_lb, time_ub
+
+    time_lb = 1
+    time_ub = 2
+
+    if (present(half_lon) .and. half_lon .and. present(half_lat) .and. half_lat) then
+      allocate(field(parallel%half_lon_lb:parallel%half_lon_ub,parallel%half_lat_lb:parallel%half_lat_ub,time_lb:time_ub))
+    else if (present(half_lon) .and. half_lon) then
+      allocate(field(parallel%half_lon_lb:parallel%half_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub,time_lb:time_ub))
+    else if (present(half_lat) .and. half_lat) then
+      allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%half_lat_lb:parallel%half_lat_ub,time_lb:time_ub))
+    else
+      allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub,time_lb:time_ub))
+    end if
+
+  end subroutine parallel_allocate_2
+
+  subroutine parallel_fill_halo(field)
+
+    real, intent(inout) :: field(:,:)
+
+    integer i, j
+
+    ! do i = 
+
+  end subroutine parallel_fill_halo
 
 end module parallel_mod
