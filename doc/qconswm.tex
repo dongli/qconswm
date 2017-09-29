@@ -17,9 +17,9 @@
 \begin{align}
 	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) + f V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
   \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) - f U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
-  \frac{\partial \phi}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial H U}{\partial \lambda} + \frac{\partial H V \cos{\varphi}}{\partial \varphi} \right)
+  \frac{\partial \phi}{\partial t} & = - \frac{1}{a \cos{\varphi}} \left( \frac{\partial H U}{\partial \lambda} + \frac{\partial H V \cos{\varphi}}{\partial \varphi} \right)
 \end{align}
-其中$\phi$是位势厚度，$\phi_s$是地表位势抬升，$H = \sqrt{\phi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\varphi$是纬度。注意前两式中的平流项采用的是
+其中$\varphi$是位势厚度，$\varphi_s$是地表位势抬升，$H = \sqrt{\varphi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\phi$是纬度。注意前两式中的平流项采用的是
 \begin{align}
   2 \frac{\partial u \cdot}{\partial \lambda} - \cdot \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} - \cdot \frac{\partial v \cos{\varphi}}{\partial \varphi}
 \end{align}
@@ -73,48 +73,88 @@
 可见算子$L_s$和$L_f$是非线性算子。
 
 \section{空间离散}
-采用等间距的经纬网格，变量布置采用Arakawa-C网格，即纬向风分量位于纬向半格点$\left( i + \frac{1}{2}, j \right)$，经向风分量位于经向半格点$\left( i, j + \frac{1}{2} \right)$，位势厚度等变量位于整网格点$\left( i, j \right)$。
+采用等间距的经纬网格，变量布置采用Arakawa-C，即纬向风分量位于纬向半格点$\left( i + \frac{1}{2}, j \right)$，经向风分量位于经向半格点$\left( i, j + \frac{1}{2} \right)$，位势厚度等量位于整网格点$\left( i, j \right)$。
 \begin{align}
-  H_{i+\frac{1}{2},j} & = \frac{H_{i,j} + H_{i+1,j}}{2}, \nonumber \\
-  H_{i,j+\frac{1}{2}} & = \frac{H_{i,j} + H_{i,j+1}}{2}, \nonumber \\
-  U_{i+\frac{1}{2},j} & = H_{i+\frac{1}{2},j} u_{i+\frac{1}{2},j} \nonumber \\
-  V_{i,j+\frac{1}{2}} & = H_{i,j+\frac{1}{2}} v_{i,j+\frac{1}{2}} \nonumber
+  H_{i+\frac{1}{2},j} & = \frac{H_{i,j} + H_{i+1,j}}{2} & H_{i,j+\frac{1}{2}} & = \frac{H_{i,j} + H_{i,j+1}}{2} \nonumber \\
+  U_{i+\frac{1}{2},j} & = H_{i+\frac{1}{2},j} u_{i+\frac{1}{2},j} & V_{i,j+\frac{1}{2}} & = H_{i,j+\frac{1}{2}} v_{i,j+\frac{1}{2}} & \phi_{i,j} \nonumber
 \end{align}
-对出发方程右端微分项采用中央差离散，注意差分时应该采用一个格距，即将不同位置的变量平均到差分位置上，如由$i-\frac{1}{2}$和$i+\frac{1}{2}$到$i$
+对出发方程右端微分项采用中央差离散，但是需要注意差分时应该采用一个格距，即需要将不同位置的变量平均到差分位置上。
+
+\subsection{变量$U$的作用项}
 \begin{align}
-  \frac{\partial u U}{\partial \lambda} & \approx \frac{1}{4 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right)}_{u_{i+1,j}} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i+\frac{3}{2},j} \right)}_{U_{i+1,j}} - \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right)}_{u_{i,j}} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i-\frac{1}{2},j} \right)}_{U_{i,j}} \right] \nonumber \\
-  U \frac{\partial u}{\partial \lambda} & \approx \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right)}_{u_{i+1,j}} - \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right)}_{u_{i,j}} \right] = \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\lambda}} \left( u_{i+\frac{3}{2},j} - u_{i-\frac{1}{2},j} \right) \nonumber \\
-  \frac{\partial v \cos{\varphi} U}{\partial \varphi} & \approx \frac{1}{4 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j+\frac{1}{2}}^*} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i+\frac{1}{2},j+1} \right)}_{U_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j-\frac{1}{2}}^*} \underbrace{\left( U_{i+\frac{1}{2},j-1} + U_{i+\frac{1}{2},j} \right)}_{U_{i+\frac{1}{2},j-\frac{1}{2}}} \right] \nonumber \\
-  U \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j+\frac{1}{2}}^*} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j-\frac{1}{2}}^*} \right] \nonumber \\
-  \frac{\partial u V}{\partial \lambda} & \approx \frac{1}{4 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right)}_{u_{i+\frac{1}{2},j+\frac{1}{2}}} \underbrace{\left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right)}_{V_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right)}_{u_{i-\frac{1}{2},j+\frac{1}{2}}} \underbrace{\left( V_{i-1,j+\frac{1}{2}} + V_{i,j+\frac{1}{2}} \right)}_{V_{i-\frac{1}{2},j+\frac{1}{2}}} \right] \nonumber \\
-  V \frac{\partial u}{\partial \lambda} & \approx \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right)}_{u_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right)}_{u_{i-\frac{1}{2},j+\frac{1}{2}}} \right] \nonumber \\
-  \frac{\partial v \cos{\varphi} V}{\partial \varphi} & \approx \frac{1}{4 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right)}_{v_{i,j+1}^*} \underbrace{\left( V_{i,j+\frac{1}{2}} + V_{i,j+\frac{3}{2}} \right)}_{V_{i,j+1}} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right)}_{v_{i,j}^*} \underbrace{\left( V_{i,j-\frac{1}{2}} + V_{i,j+\frac{1}{2}} \right)}_{V_{i,j}} \right] \nonumber \\
-  V \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right)}_{v_{i,j+1}^*} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right)}_{v_{i,j}^*} \right] = \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\varphi}} \left( v_{i,j+\frac{3}{2}}^* - v_{i,j-\frac{1}{2}}^* \right) \nonumber
+  \left( \frac{\partial u U}{\partial \lambda} \right)_{i+\frac{1}{2},j} & \approx \frac{1}{4 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right)}_{u_{i+1,j}} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i+\frac{3}{2},j} \right)}_{U_{i+1,j}} - \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right)}_{u_{i,j}} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i-\frac{1}{2},j} \right)}_{U_{i,j}} \right] \nonumber \\
+  \left( U \frac{\partial u}{\partial \lambda} \right)_{i+\frac{1}{2},j} & \approx \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right)}_{u_{i+1,j}} - \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right)}_{u_{i,j}} \right] = \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\lambda}} \left[ u_{i+\frac{3}{2},j} - u_{i-\frac{1}{2},j} \right] \nonumber \\
+  \left( \frac{\partial v \cos{\varphi} U}{\partial \varphi} \right)_{i+\frac{1}{2},j} & \approx \frac{1}{4 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j+\frac{1}{2}}^*} \underbrace{\left( U_{i+\frac{1}{2},j} + U_{i+\frac{1}{2},j+1} \right)}_{U_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j-\frac{1}{2}}^*} \underbrace{\left( U_{i+\frac{1}{2},j-1} + U_{i+\frac{1}{2},j} \right)}_{U_{i+\frac{1}{2},j-\frac{1}{2}}} \right] \nonumber \\
+  \left( U \frac{\partial v \cos{\varphi}}{\partial \varphi} \right)_{i+\frac{1}{2},j} & \approx \frac{U_{i+\frac{1}{2},j}}{2 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j+\frac{1}{2}}^*} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right)}_{v_{i+\frac{1}{2},j-\frac{1}{2}}^*} \right] \nonumber \\
+  \left( H \frac{\partial \phi^*}{\partial \lambda} \right)_{i+\frac{1}{2},j} & = \frac{H_{i,j} + H_{i+1,j}}{2 \Delta{\lambda}} \left( \phi_{i+1,j}^* - \phi_{i,j}^* \right) \nonumber
 \end{align}
-其中$v^* = v \cos{\varphi}$为方便推导做的简记。
+其中$v^* = v \cos{\varphi}$和$\phi^* = \phi + \phi_s$为方便推导做的简记。
+
 \begin{align}
-  2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right) U_{i+\frac{3}{2},j} - \left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right) U_{i-\frac{1}{2},j} \right] \\
-  2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right) U_{i+\frac{1}{2},j+1} - \left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right) U_{i+\frac{1}{2},j-1} \right] \\
-  2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right) V_{i+1,j+\frac{1}{2}} - \left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right) V_{i-1,j+\frac{1}{2}} \right] \\
-  2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} & \approx \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right) V_{i,j+\frac{3}{2}} - \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) V_{i,j-\frac{1}{2}} \right]
+  \left( 2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} \right)_{i+\frac{1}{2},j} & = \left\{
+    \begin{array}{ll}
+      \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2},j} + u_{i+\frac{3}{2},j} \right) U_{i+\frac{3}{2},j} \right. & \\
+      \quad \left. - \left( u_{i+\frac{1}{2},j} + u_{i-\frac{1}{2},j} \right) U_{i-\frac{1}{2},j} \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      0 & j = [1, N_\varphi]
+    \end{array}
+  \right. \\
+  \left( 2 \frac{\partial v^* U}{\partial \varphi} - U \frac{\partial v^*}{\partial \varphi} \right)_{i+\frac{1}{2},j} & = \left\{
+    \begin{array}{ll}
+      \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i+1,j+\frac{1}{2}}^* \right) U_{i+\frac{1}{2},j+1} \right. & \\
+      \quad \left. - \left( v_{i,j-\frac{1}{2}}^* + v_{i+1,j-\frac{1}{2}}^* \right) U_{i+\frac{1}{2},j} \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      0 & j = [1, N_\varphi]
+    \end{array}
+  \right. \\
+  \left(f V\right)_{i+\frac{1}{2},j} & = \left\{
+    \begin{array}{ll}
+      \frac{1}{4} \left[ f_{j+\frac{1}{2}} \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) \right. \\
+      \left. + f_{j-\frac{1}{2}} \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      0 & j = [1, N_\varphi]
+    \end{array}
+  \right. \\
+  \left( H \frac{\partial \phi^*}{\partial \lambda} \right)_{i+\frac{1}{2},j} & = \left\{
+    \begin{array}{ll}
+      \frac{H_{i,j} + H_{i+1,j}}{2 \Delta{\lambda}} \left( \phi_{i+1,j}^* - \phi_{i,j}^* \right) & j = [2, 3, \dots, N_\varphi - 1] \\
+      0 & j = [1, N_\varphi]
+    \end{array}
+  \right.
+\end{align}
+
+\subsection{变量$V$的作用项}
+\begin{align}
+  \left( \frac{\partial u V}{\partial \lambda} \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right)}_{u_{i+\frac{1}{2},j+\frac{1}{2}}} \underbrace{\left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right)}_{V_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right)}_{u_{i-\frac{1}{2},j+\frac{1}{2}}} \underbrace{\left( V_{i-1,j+\frac{1}{2}} + V_{i,j+\frac{1}{2}} \right)}_{V_{i-\frac{1}{2},j+\frac{1}{2}}} \right] \nonumber \\
+  \left( V \frac{\partial u}{\partial \lambda} \right)_{i,j+\frac{1}{2}} & \approx \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\lambda}} \left[ \underbrace{\left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right)}_{u_{i+\frac{1}{2},j+\frac{1}{2}}} - \underbrace{\left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right)}_{u_{i-\frac{1}{2},j+\frac{1}{2}}} \right] \nonumber \\
+  \left( \frac{\partial v^* V}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right)}_{v_{i,j+1}^*} \underbrace{\left( V_{i,j+\frac{1}{2}} + V_{i,j+\frac{3}{2}} \right)}_{V_{i,j+1}} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right)}_{v_{i,j}^*} + \underbrace{\left( V_{i,j-\frac{1}{2}} + V_{i,j+\frac{1}{2}} \right)}_{V_{i,j}} \right] \nonumber \\
+  \left( V \frac{\partial v^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \frac{V_{i,j+\frac{1}{2}}}{2 \Delta{\varphi}} \left[ \underbrace{\left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right)}_{v_{i,j+1}^*} - \underbrace{\left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right)}_{v_{i,j}^*} \right] \nonumber \\
+  \left( H \frac{\partial \phi^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \frac{H_{i,j} + H_{i,j+1}}{2 \Delta{\varphi}} \left( \phi_{i,j+1}^* - \phi_{i,j}^* \right)
 \end{align}
 
 \begin{align}
-  H \frac{\partial \phi + \phi_s}{\partial \lambda} & \approx \frac{H_{i,j} + H_{i+1,j}}{2 \Delta{\lambda}} \left( \phi_{i+1,j} - \phi_{i,j} + {\phi_s}_{i+1,j} - {\phi_s}_{i,j} \right) \\
-  H \frac{\partial \phi + \phi_s}{\partial \varphi} & \approx \frac{H_{i,j} + H_{i,j+1}}{2 \Delta{\varphi}} \left( \phi_{i,j+1} - \phi_{i,j} + {\phi_s}_{i,j+1} - {\phi_s}_{i,j} \right)
+  \left( 2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \left( u_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1} \right) V_{i+1,j+\frac{1}{2}}  - \left( u_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1} \right) V_{i-1,j+\frac{1}{2}} \right] \nonumber \\
+  & \quad\quad\quad\quad\quad j = [1,2,\dots,N_\varphi - 1] \\
+  \left( 2 \frac{\partial v^* V}{\partial \varphi} - V \frac{\partial v^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \left\{
+    \begin{array}{ll}
+      \frac{V_{i,j+\frac{3}{2}}}{2 \Delta{\varphi}} \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}} \right) & j = 1 \\
+      \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right) V_{i,j+\frac{3}{2}} - \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) V_{i,j-\frac{1}{2}} \right] & j = [2,3,\dots,N_\varphi - 2] \\
+      - \frac{V_{i,j-\frac{1}{2}}}{2 \Delta{\varphi}} \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) & j = N_\varphi - 1
+    \end{array}
+  \right. \\
+  \left( f U \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \ \right] \quad j = [1, 2, \dots, N_\varphi - 1] \\
+  \left( H \frac{\partial \phi^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \frac{H_{i,j} + H_{i,j+1}}{2 \Delta{\varphi}} \left( \phi_{i,j+1}^* - \phi_{i,j}^* \right) \quad j = [1, 2, \dots, N_\varphi - 1]
 \end{align}
+
+\subsection{变量$\phi$的作用项}
 
 \begin{align}
-  f V & \approx \frac{1}{4} \left[ f_{j-\frac{1}{2}} \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) + f_{j+\frac{1}{2}} \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) \right] \\
-  f U & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \right]
+  \left( \frac{\partial H U}{\partial \lambda} \right)_{i,j} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \left( H_{i,j} + H_{i+1,j} \right) U_{i+\frac{1}{2},j} - \left( H_{i-1,j} + H_{i,j} \right) U_{i-\frac{1}{2},j} \right] \quad j = [2, 3, \dots, N_\varphi - 1] \\
+  \left( \frac{\partial H V^*}{\partial \varphi} \right)_{i,j} & \approx \left\{
+    \begin{array}{ll}
+      \frac{1}{2 N_\lambda \Delta{\varphi}} \sum_{i = 1}^{N_\lambda} \left( H_{i,j} + H_{i,j+1} \right) V_{i,j+\frac{1}{2}}^* & j = 1 \\
+      \frac{1}{2 \Delta{\varphi}} \left[ \left( H_{i,j} + H_{i,j+1} \right) V_{i,j+\frac{1}{2}}^* - \left( H_{i,j-1} + H_{i,j} \right) V_{i,j-\frac{1}{2}}^* \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      - \frac{1}{2 N_\lambda \Delta{\varphi}} \sum_{i = 1}^{N_\lambda} \left( H_{i,j-1} + H_{i,j} \right) V_{i,j-\frac{1}{2}}^* & j = N_\varphi
+    \end{array}
+  \right.
 \end{align}
-
-\begin{align}
-  \frac{\partial H U}{\partial \lambda} & \approx \frac{1}{2 \Delta{\lambda}} \left[ \underbrace{\left( H_{i,j} + H_{i+1,j} \right)}_{H_{i+\frac{1}{2},j}} U_{i+\frac{1}{2},j} - \underbrace{\left( H_{i-1,j} + H_{i,j} \right)}_{H_{i-\frac{1}{2},j}} U_{i-\frac{1}{2},j} \right] \\
-  \frac{\partial H V \cos{\varphi}}{\partial \varphi} & \approx \frac{1}{\Delta{\varphi}} \left[ \underbrace{\left( H_{i,j}^* + H_{i,j+1}^* \right)}_{H_{i,j+\frac{1}{2}}^*} V_{i,j+\frac{1}{2}} - \underbrace{\left( H_{i,j-1}^* + H_{i,j}^* \right)}_{H_{i,j-\frac{1}{2}}^*} V_{i,j-\frac{1}{2}} \right]
-\end{align}
-
-\section{极点离散}
 
 \section{快慢过程分裂方案}
 
