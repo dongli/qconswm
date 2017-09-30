@@ -43,7 +43,7 @@ contains
 
   subroutine dycore_init()
 
-    integer j
+    integer i, j
 
     call mesh_init()
     call parallel_init()
@@ -78,6 +78,22 @@ contains
     call parallel_allocate(ut, half_lon=.true.)
     call parallel_allocate(vt, half_lat=.true.)
     call parallel_allocate(gdt)
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state%ghs(i,j) = i + j
+      end do
+    end do
+    call parallel_fill_halo(state%ghs, left_halo=.true., right_halo=.true., top_halo=.true., bottom_halo=.true.)
+    do j = lbound(state%ghs, 2), ubound(state%ghs, 2)
+      do i = lbound(state%ghs, 1), ubound(state%ghs, 1)
+        if (i == ubound(state%ghs, 1)) then
+          write(6, '(F5.1)') state%ghs(i,j)
+        else
+          write(6, '(F5.1)', advance='no') state%ghs(i,j)
+        end if
+      end do
+    end do
 
     write(6, *) '[Notice]: Dycore module is initialized.'
 

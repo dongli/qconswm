@@ -1,6 +1,8 @@
 module parallel_mod
 
-  ! use mpi
+#ifndef NO_MPI
+  use mpi
+#endif
   use mesh_mod
 
   implicit none
@@ -36,6 +38,11 @@ module parallel_mod
     module procedure parallel_allocate_1
     module procedure parallel_allocate_2
   end interface parallel_allocate
+
+  interface parallel_fill_halo
+    module procedure parallel_fill_halo_1
+    module procedure parallel_fill_halo_2
+  end interface parallel_fill_halo
 
 contains
 
@@ -98,6 +105,7 @@ contains
 
     integer time_lb, time_ub
 
+    ! Only support two time levels for now.
     time_lb = 1
     time_ub = 2
 
@@ -113,14 +121,72 @@ contains
 
   end subroutine parallel_allocate_2
 
-  subroutine parallel_fill_halo(field)
+  subroutine parallel_fill_halo_1(field, left_halo, right_halo, top_halo, bottom_halo, all_halo)
 
     real, intent(inout) :: field(:,:)
+    logical, intent(in), optional :: left_halo
+    logical, intent(in), optional :: right_halo
+    logical, intent(in), optional :: top_halo
+    logical, intent(in), optional :: bottom_halo
+    logical, intent(in), optional :: all_halo
 
-    integer i, j
+    integer i, j, m, n
 
-    ! do i = 
+    if (present(left_halo) .and. left_halo) then
+      m = lbound(field, 1) - 1
+      n = ubound(field, 1) - 2 * parallel%lon_halo_width
+      do j = lbound(field, 2), ubound(field, 2)
+        do i = 1, parallel%lon_halo_width
+          field(m+i,j) = field(n+i,j)
+        end do
+      end do
+    end if
 
-  end subroutine parallel_fill_halo
+    ! |             |                             |              |              |
+    ! lb            lb + w                        ub - 2w        ub - w         ub
+    if (present(right_halo) .and. right_halo) then
+      m = ubound(field, 1) - parallel%lon_halo_width
+      n = lbound(field, 1) + parallel%lon_halo_width - 1
+      do j = lbound(field, 2), ubound(field, 2)
+        do i = 1, parallel%lon_halo_width
+          field(m+i,j) = field(n+i,j)
+        end do
+      end do
+    end if
+
+    if (present(top_halo) .and. top_halo) then
+      m = lbound(field, 2) - 1
+      n = ubound(field, 2) - 2 * parallel%lat_halo_width
+      do j = 1, parallel%lat_halo_width
+        do i = lbound(field, 1), ubound(field, 1)
+          field(i,m+j) = field(i,n+j)
+        end do
+      end do
+    end if
+
+    if (present(bottom_halo) .and. bottom_halo) then
+      m = ubound(field, 2) - parallel%lat_halo_width
+      n = lbound(field, 2) + parallel%lat_halo_width - 1
+      do j = 1, parallel%lat_halo_width
+        do i = lbound(field, 1), ubound(field, 1)
+          field(i,m+j) = field(i,n+j)
+        end do
+      end do
+    end if
+
+  end subroutine parallel_fill_halo_1
+
+  subroutine parallel_fill_halo_2(field, time_idx, left_halo, right_halo, top_halo, bottom_halo)
+
+    real, intent(inout) :: field(:,:,:)
+    integer, intent(in) :: time_idx
+    logical, intent(in), optional :: left_halo
+    logical, intent(in), optional :: right_halo
+    logical, intent(in), optional :: top_halo
+    logical, intent(in), optional :: bottom_halo
+
+    call parallel_fill_halo_1(field(:,:,time_idx), left_halo, right_halo, top_halo, bottom_halo)
+
+  end subroutine parallel_fill_halo_2
 
 end module parallel_mod
