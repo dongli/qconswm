@@ -14,12 +14,14 @@ module dycore_mod
   type coef_type
     ! Coriolis coefficient at full/half meridional grids
     real, allocatable :: full_cori(:)
-    ! Curvature coefficient at full/half meridional grids 
     real, allocatable :: half_cori(:)
+    ! Curvature coefficient at full/half meridional grids 
     real, allocatable :: full_curv(:)
     real, allocatable :: half_curv(:)
+    ! Zonal difference coefficient at full/half meridional grids
     real, allocatable :: full_dlon(:)
     real, allocatable :: half_dlon(:)
+    ! Meridional difference coefficient at full/half meridional grids
     real, allocatable :: full_dlat(:)
     real, allocatable :: half_dlat(:)
   end type coef_type
@@ -31,6 +33,19 @@ module dycore_mod
     real, allocatable :: ghs(:,:)  ! Surface geopotential
   end type state_type
 
+  type dtend_type
+    real, allocatable :: u_adv_lon(:,:,:)
+    real, allocatable :: u_adv_lat(:,:,:)
+    real, allocatable :: v_adv_lon(:,:,:)
+    real, allocatable :: v_adv_lat(:,:,:)
+    real, allocatable :: fu(:,:,:)
+    real, allocatable :: fv(:,:,:)
+    real, allocatable :: u_pgf(:,:,:)
+    real, allocatable :: v_pgf(:,:,:)
+    real, allocatable :: mass_div_lon(:,:,:)
+    real, allocatable :: mass_div_lat(:,:,:)
+  end type dtend_type
+
   ! IAP transformed variables
   real, allocatable :: ut(:,:,:)
   real, allocatable :: vt(:,:,:)
@@ -38,6 +53,7 @@ module dycore_mod
 
   type(coef_type) coef
   type(state_type) state
+  type(dtend_type) dtend
 
 contains
 
@@ -79,6 +95,17 @@ contains
     call parallel_allocate(vt, half_lat=.true.)
     call parallel_allocate(gdt)
 
+    call parallel_allocate(dtend%u_adv_lon, half_lon=.true.)
+    call parallel_allocate(dtend%u_adv_lat, half_lon=.true.)
+    call parallel_allocate(dtend%fv, half_lon=.true.)
+    call parallel_allocate(dtend%u_pgf, half_lon=.true.)
+    call parallel_allocate(dtend%v_adv_lon, half_lat=.true.)
+    call parallel_allocate(dtend%v_adv_lat, half_lat=.true.)
+    call parallel_allocate(dtend%fu, half_lat=.true.)
+    call parallel_allocate(dtend%v_pgf, half_lat=.true.)
+    call parallel_allocate(dtend%mass_div_lon)
+    call parallel_allocate(dtend%mass_div_lat)
+
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         state%ghs(i,j) = i + j
@@ -119,6 +146,14 @@ contains
     if (allocated(ut)) deallocate(ut)
     if (allocated(vt)) deallocate(vt)
     if (allocated(gdt)) deallocate(gdt)
+    if (allocated(dtend%u_adv_lon)) deallocate(dtend%u_adv_lon)
+    if (allocated(dtend%u_adv_lat)) deallocate(dtend%u_adv_lat)
+    if (allocated(dtend%v_adv_lon)) deallocate(dtend%v_adv_lon)
+    if (allocated(dtend%v_adv_lat)) deallocate(dtend%v_adv_lat)
+    if (allocated(dtend%fu)) deallocate(dtend%fu)
+    if (allocated(dtend%fv)) deallocate(dtend%fv)
+    if (allocated(dtend%u_pgf)) deallocate(dtend%u_pgf)
+    if (allocated(dtend%v_pgf)) deallocate(dtend%v_pgf)
 
     write(6, *) '[Notice]: Dycore module is finalized.'
 
@@ -152,5 +187,146 @@ contains
     end do
 
   end subroutine iap_transform
+
+  subroutine calc_momentum_advection_terms(time_idx)
+
+    integer, intent(in) :: time_idx
+
+    real up1, um1, vp1, vm1
+    integer i, j
+
+    ! U
+    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        up1 = state%u(i,j,time_idx) + state%u(i+1,j,time_idx)
+        um1 = state%u(i,j,time_idx) + state%u(i-1,j,time_idx)
+        dtend%u_adv_lon(i,j,time_idx) = 0.5 * coef%full_dlon(j) * (up1 * ut(i+1,j,time_idx) - um1 * ut(i-1,j,time_idx))
+
+        vp1 = (state%v(i,j,time_idx) + state%v(i+1,j,time_idx)) * mesh%half_cos_lat(j)
+        vm1 = (state%v(i,j-1,time_idx) + state%v(i+1,j-1,time_idx)) * mesh%half_cos_lat(j-1)
+        dtend%u_adv_lat(i,j,time_idx) = 0.5 * coef%full_dlat(j) * (vp1 * ut(i,j+1,time_idx) - vm1 * ut(i,j-1,time_idx))
+      end do
+    end do
+
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        up1 = state%u(i,j,time_idx) + state%u(i,j+1,time_idx)
+        um1 = state%u(i-1,j,time_idx) + state%u(i-1,j+1,time_idx)
+        dtend%v_adv_lon(i,j,time_idx) = 0.5 * coef%half_dlon(j) * (up1 * vt(i+1,j,time_idx) - um1 * vt(i-1,j,time_idx))
+      end do
+    end do
+
+    ! V
+    do j = parallel%half_lat_start_idx_no_pole, parallel%half_lat_end_idx_no_pole
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        vp1 = (state%v(i,j,time_idx) * mesh%half_cos_lat(j) + state%v(i,j+1,time_idx) * mesh%half_cos_lat(j+1))
+        vm1 = (state%v(i,j,time_idx) * mesh%half_cos_lat(j) + state%v(i,j-1,time_idx) * mesh%half_cos_lat(j-1))
+        dtend%v_adv_lat(i,j,time_idx) = 0.5 * coef%half_dlat(j) * (vp1 * vt(i,j+1,time_idx) - vm1 * vt(i,j-1,time_idx))
+      end do
+    end do
+
+    ! Handle meridional advection at North Pole.
+    if (parallel%half_lat_start_idx == parallel%half_lat_south_pole_idx) then
+      j = parallel%half_lat_south_pole_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        vp1 = state%v(i,j,time_idx) * mesh%half_cos_lat(j) + state%v(i,j+1,time_idx) * mesh%half_cos_lat(j+1)
+        dtend%v_adv_lat(i,j,time_idx) = 0.5 * coef%half_dlat(j) * vp1 * vt(i,j+1,time_idx)
+      end do
+    end if
+
+    ! Handle meridional advection at South Pole.
+    if (parallel%half_lat_end_idx == parallel%half_lat_north_pole_idx) then
+      j = parallel%half_lat_north_pole_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        vm1 = state%v(i,j,time_idx) * mesh%half_cos_lat(j) + state%v(i,j-1,time_idx) * mesh%half_cos_lat(j-1)
+        dtend%v_adv_lat(i,j,time_idx) = - 0.5 * coef%half_dlat(j) * vm1 * vt(i,j-1,time_idx)
+      end do
+    end if
+
+  end subroutine calc_momentum_advection_terms
+
+  subroutine calc_coriolis_and_curvature_terms(time_idx)
+
+    integer, intent(in) :: time_idx
+
+    integer i, j
+
+    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        dtend%fv(i,j,time_idx) = 0.25 * (coef%half_cori(j) * (vt(i,j,time_idx) + vt(i+1,j,time_idx)) + &
+                                         coef%half_cori(j-1) * (vt(i,j-1,time_idx) + vt(i+1,j-1,time_idx)))
+      end do
+    end do
+
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        dtend%fu(i,j,time_idx) = 0.25 * (coef%full_cori(j) * (ut(i,j,time_idx) + ut(i-1,j,time_idx)) + &
+                                         coef%full_cori(j+1) * (ut(i,j+1,time_idx) + ut(i-1,j+1,time_idx)))
+      end do
+    end do
+
+  end subroutine calc_coriolis_and_curvature_terms
+
+  subroutine calc_pressure_gradient_force_terms(time_idx)
+
+    integer, intent(in) :: time_idx
+
+    integer i, j
+
+    ! U
+    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        dtend%u_pgf(i,j,time_idx) = coef%full_dlon(j) * (gdt(i,j,time_idx) + gdt(i+1,j,time_idx)) * &
+          (state%gd(i+1,j,time_idx) - state%gd(i,j,time_idx) + state%ghs(i+1,j) - state%ghs(i,j))
+      end do
+    end do
+
+    ! V
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%half_lon_end_idx
+        dtend%v_pgf(i,j,time_idx) = coef%half_dlat(j) * (gdt(i,j,time_idx) + gdt(i,j+1,time_idx)) * &
+          (state%gd(i,j+1,time_idx) - state%gd(i,j,time_idx) + state%ghs(i,j+1) - state%ghs(i,j)) * mesh%half_cos_lat(j)
+      end do
+    end do
+
+  end subroutine calc_pressure_gradient_force_terms
+
+  subroutine calc_mass_divergence(time_idx)
+
+      integer, intent(in) :: time_idx
+
+      integer i, j
+      real sp, np
+
+      do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          dtend%mass_div_lon(i,j,time_idx) = coef%full_dlon(j) * ( &
+            (gdt(i,j,time_idx) + gdt(i+1,j,time_idx)) * ut(i,j,time_idx) - &
+            (gdt(i,j,time_idx) + gdt(i-1,j,time_idx)) * ut(i-1,j,time_idx))
+          dtend%mass_div_lat(i,j,time_idx) = coef%full_dlat(j) * ( &
+            (gdt(i,j,time_idx) + gdt(i,j+1,time_idx)) * vt(i,j,time_idx) * mesh%half_cos_lat(j) - &
+            (gdt(i,j,time_idx) + gdt(i,j-1,time_idx)) * vt(i,j-1,time_idx) * mesh%half_cos_lat(j-1))
+        end do
+      end do
+
+      if (parallel%full_lat_start_idx == parallel%full_lat_north_pole_idx) then
+        j = parallel%full_lat_north_pole_idx
+        sp = 0.0
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          sp = sp + (gdt(i,j,time_idx) + gdt(i,j+1,time_idx)) * vt(i,j,time_idx) * mesh%half_cos_lat(j)
+        end do
+        call parallel_zonal_sum(sp, dtend%mass_div_lat(1,j,time_idx))
+      end if
+
+      if (parallel%full_lat_end_idx == parallel%full_lat_south_pole_idx) then
+        j = parallel%full_lat_south_pole_idx
+        np = 0.0
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          np = np - (gdt(i,j,time_idx) + gdt(i,j-1,time_idx)) * vt(i,j-1,time_idx) * mesh%half_cos_lat(j-1)
+        end do
+        call parallel_zonal_sum(np, dtend%mass_div_lat(1,j,time_idx))
+      end if
+
+  end subroutine calc_mass_divergence
 
 end module dycore_mod

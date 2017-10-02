@@ -14,6 +14,7 @@ module parallel_mod
   public parallel_final
   public parallel_allocate
   public parallel_fill_halo
+  public parallel_zonal_sum
 
   type parallel_params_type
     integer full_lon_start_idx
@@ -24,6 +25,14 @@ module parallel_mod
     integer full_lat_end_idx
     integer half_lat_start_idx
     integer half_lat_end_idx
+    integer full_lat_start_idx_no_pole
+    integer full_lat_end_idx_no_pole
+    integer half_lat_start_idx_no_pole
+    integer half_lat_end_idx_no_pole
+    integer full_lat_south_pole_idx
+    integer full_lat_north_pole_idx
+    integer half_lat_south_pole_idx
+    integer half_lat_north_pole_idx
     integer lon_halo_width
     integer lat_halo_width
     integer full_lon_lb, half_lon_lb
@@ -56,6 +65,16 @@ contains
     parallel%full_lat_end_idx = mesh%num_full_lat
     parallel%half_lat_start_idx = 1
     parallel%half_lat_end_idx = mesh%num_half_lat
+
+    parallel%full_lat_start_idx_no_pole = parallel%full_lat_start_idx + 1
+    parallel%full_lat_end_idx_no_pole = parallel%full_lat_end_idx - 1
+    parallel%half_lat_start_idx_no_pole = parallel%half_lat_start_idx + 1
+    parallel%half_lat_end_idx_no_pole = parallel%half_lat_end_idx - 1
+
+    parallel%full_lat_south_pole_idx = 1
+    parallel%full_lat_north_pole_idx = mesh%num_full_lat
+    parallel%half_lat_south_pole_idx = 1
+    parallel%half_lat_north_pole_idx = mesh%num_half_lat
 
     parallel%lon_halo_width = 1
     parallel%lat_halo_width = 1
@@ -188,5 +207,14 @@ contains
     call parallel_fill_halo_1(field(:,:,time_idx), left_halo, right_halo, top_halo, bottom_halo)
 
   end subroutine parallel_fill_halo_2
+
+  subroutine parallel_zonal_sum(send_buf, recv_buf)
+
+    real, intent(in) :: send_buf
+    real, intent(out) :: recv_buf
+
+    recv_buf = send_buf
+
+  end subroutine parallel_zonal_sum
 
 end module parallel_mod
