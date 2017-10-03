@@ -48,6 +48,15 @@ module dycore_mod
     real, allocatable :: mass_div_lat(:,:,:)
   end type dtend_type
 
+  type control_type
+    ! 1: predict-correct
+    ! 2: runge-kutta
+    ! 3: leap-frog
+    integer time_scheme
+    integer time_step
+    integer last_time_step
+  end type control_type
+
   ! IAP transformed variables
   real, allocatable :: ut(:,:,:)
   real, allocatable :: vt(:,:,:)
@@ -56,11 +65,7 @@ module dycore_mod
   type(coef_type) coef
   type(state_type) state
   type(dtend_type) dtend
-
-  ! 1: predict-correct
-  ! 2: runge-kutta
-  ! 3: leap-frog
-  integer time_scheme_option
+  type(control_type) control
 
 contains
 
@@ -131,21 +136,28 @@ contains
 
     select case (time_scheme)
     case ('predict-correct')
-      time_scheme_option = 1
+      control%time_scheme = 1
     case ('runge-kutta')
-      time_scheme_option = 2
+      control%time_scheme = 2
     case ('leap-frog')
-      time_scheme_option = 3
+      control%time_scheme = 3
     case default
       write(6, *) '[Error]: Unknown time_scheme ' // trim(time_scheme) // '!'
       stop 1
     end select
+
+    control%time_step = 0
 
     write(6, *) '[Notice]: Dycore module is initialized.'
 
   end subroutine dycore_init
 
   subroutine dycore_run()
+
+    do while (control%time_step /= control%last_time_step)
+
+      control%time_step = control%time_step + 1
+    end do
 
   end subroutine dycore_run
 
@@ -356,7 +368,7 @@ contains
 
   subroutine time_integrate()
 
-    select case (time_scheme_option)
+    select case (control%time_scheme)
     case (1)
       call predict_correct()
     case (2)
