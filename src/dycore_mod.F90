@@ -9,7 +9,9 @@ module dycore_mod
   private
 
   public dycore_init
+  public dycore_run
   public dycore_final
+  public state
 
   type coef_type
     ! Coriolis coefficient at full/half meridional grids
@@ -54,6 +56,11 @@ module dycore_mod
   type(coef_type) coef
   type(state_type) state
   type(dtend_type) dtend
+
+  ! 1: predict-correct
+  ! 2: runge-kutta
+  ! 3: leap-frog
+  integer time_scheme_option
 
 contains
 
@@ -122,9 +129,25 @@ contains
       end do
     end do
 
+    select case (time_scheme)
+    case ('predict-correct')
+      time_scheme_option = 1
+    case ('runge-kutta')
+      time_scheme_option = 2
+    case ('leap-frog')
+      time_scheme_option = 3
+    case default
+      write(6, *) '[Error]: Unknown time_scheme ' // trim(time_scheme) // '!'
+      stop 1
+    end select
+
     write(6, *) '[Notice]: Dycore module is initialized.'
 
   end subroutine dycore_init
+
+  subroutine dycore_run()
+
+  end subroutine dycore_run
 
   subroutine dycore_final()
 
@@ -154,6 +177,8 @@ contains
     if (allocated(dtend%fv)) deallocate(dtend%fv)
     if (allocated(dtend%u_pgf)) deallocate(dtend%u_pgf)
     if (allocated(dtend%v_pgf)) deallocate(dtend%v_pgf)
+    if (allocated(dtend%mass_div_lon)) deallocate(dtend%mass_div_lon)
+    if (allocated(dtend%mass_div_lat)) deallocate(dtend%mass_div_lat)
 
     write(6, *) '[Notice]: Dycore module is finalized.'
 
@@ -328,5 +353,30 @@ contains
       end if
 
   end subroutine calc_mass_divergence
+
+  subroutine time_integrate()
+
+    select case (time_scheme_option)
+    case (1)
+      call predict_correct()
+    case (2)
+      call runge_kutta()
+    case (3)
+      call leap_frog()
+    end select
+
+  end subroutine time_integrate
+
+  subroutine predict_correct()
+
+  end subroutine predict_correct
+
+  subroutine runge_kutta()
+
+  end subroutine runge_kutta
+
+  subroutine leap_frog()
+
+  end subroutine leap_frog
 
 end module dycore_mod

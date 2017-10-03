@@ -12,9 +12,19 @@ module params_mod
   integer num_lon
   integer num_lat
 
+  ! Options:
+  ! - predict-correct
+  ! - runge-kutta
+  character(30) time_scheme ! Time integration scheme
+  integer time_order ! Time integration order (different schemes will have different meanings)
+  logical qcon_modified ! Switch whether quadratic conservation modification is added
+
   namelist /qconswm_params/ &
     num_lon, &
-    num_lat
+    num_lat, &
+    time_scheme, &
+    time_order, &
+    qcon_modified
 
 contains
 

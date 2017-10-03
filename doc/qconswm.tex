@@ -162,6 +162,42 @@
   \right.
 \end{align}
 
+\section{时间积分方案}
+
+将出发方程写为如下半离散形式
+\begin{align}
+  \frac{\partial F}{\partial t} = - L F
+\end{align}
+其中$L$是具有反对称性的离散差分格式。
+
+\subsection{欧拉中点时间积分方案}
+
+欧拉中点积分方案是一种隐式积分方案
+\begin{align}
+  \frac{F^{n+1} - F^n}{\Delta{t}} = - L \left( \frac{F^{n+1} + F^n}{2} \right)
+\end{align}
+方程两边对$F^{n+1} + F^n$做内积，根据$L$的反对称性可知该方案保持平方守恒（$\lVert F^{n+1} \rVert^2 = \lVert F^n \rVert^2$）。
+
+\subsection{欧拉前差时间积分方案}
+
+欧拉前差积分方案是一种显式积分方案，并且会导致能量增长
+\begin{align}
+  \frac{F^{n+1} - F^n}{\Delta{t}} = - L \left( F^n \right)
+\end{align}
+采用如下迭代计算格式
+\begin{align*}
+  F_0^{n+1} & = F^n - \tau_0 L F^n \\
+  F_1^{n+1} & = F^n - \tau_1 L F_0^{n+1} \\
+  F_2^{n+1} & = F^n - \tau_2 L F_1^{n+1} \\
+  & \dots \\
+  F_k^{n+1} & = F^n - \tau_k L F_{k-1}^{n+1}
+\end{align*}
+其中$k = 1, 2, \dots, m$，$\tau_k$是待定时间步长。
+
+\subsection{Runge-Kutta时间积分方案}
+
+\subsection{蛙跳时间积分方案}
+
 \section{快慢过程分裂方案}
 
 \begin{align}
@@ -356,6 +392,23 @@
   & = \frac{1}{4 \Delta{\lambda}} \left[ \left( u_{i+\frac{3}{2}} - u_{i+\frac{1}{2}} \right) U_{i+\frac{3}{2}} + {\color{red}\left( u_{i+\frac{3}{2}} - u_{i-\frac{1}{2}} \right) U_{i+\frac{1}{2}}} + \left( u_{i+\frac{1}{2}} - u_{i-\frac{1}{2}} \right) U_{i-\frac{1}{2}} \right] \label{eqn:平流项第二种形式离散格式}
 \end{align}
 由此可见（\ref{eqn:平流项第一种形式离散格式}）可以保证反对称性，而（\ref{eqn:平流项第二种形式离散格式}）多了$U_{i+\frac{1}{2}}$项，无法满足反对称性要求。
+
+\section{欧拉前差时间积分方案的守恒改造}
+
+目标是找出每个迭代步的时间步长，抽出某两个相邻迭代步
+\begin{align*}
+  F_{k-1}^{n+1} & = F^n - \tau_{k-1} L F_{k-2}^{n+1} \\
+  F_k^{n+1} & = F^n - \tau_k L F_{k-1}^{n+1}
+\end{align*}
+将方程两边与$L F_{k-1}^{n+1}$做内积
+\begin{align*}
+  \left( F_{k-1}^{n+1}, L F_{k-1}^{n+1} \right) & = \left( F^n, L F_{k-1}^{n+1} \right) - \tau_{k-1} \left( L F_{k-2}^{n+1}, L F_{k-1}^{n+1} \right) \\
+  \left( F_k^{n+1}, L F_{k-1}^{n+1} \right) & = \left( F^n, L F_{k-1}^{n+1} \right) - \tau_k \lVert L F_{k-1}^{n+1} \rVert^2
+\end{align*}
+由于$L$具有反对称性
+\begin{align*}
+  \left( L F_{k-1}^{n+1}, F_k^{n+1} \right) & = \tau_{k-1} \left( L F_{k-2}^{n+1}, L F_{k-1}^{n+1} \right) - \tau_k \lVert L F_{k-1}^{n+1} \rVert^2
+\end{align*}
 
 \end{appendix}
 
