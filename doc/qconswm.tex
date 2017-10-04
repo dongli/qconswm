@@ -194,7 +194,7 @@
 \end{align*}
 其中$k = 1, 2, \dots, m$，$\tau_k$是待定时间步长。根据平方守恒要求，可以推出（推导过程见附录\ref{app:欧拉前差时间积分方案的守恒改造}）第$k$步的时间步长为
 \begin{align}
-  \tau_k & = 2 \tau_{k-1} \frac{\left( L F_{k-1}^{n+1}, L F_{k-1}^{n+2} \right)}{\lVert L F_{k-1}^{n+1} \rVert^2}
+  \tau_k & = 2 \tau_{k-1} \frac{\left( L F_{k-1}^{n+1}, L F_{k-2}^{n+1} \right)}{\lVert L F_{k-1}^{n+1} \rVert^2}
 \end{align}
 一般取$\tau_{k-1} = \frac{1}{2} \Delta{t}$，即只修改最后一步的时间步长。
 
@@ -407,24 +407,24 @@
 \end{align}
 将方程两边与$L F_{k-1}^{n+1}$做内积
 \begin{align*}
-  \left( L F_{k-1}^{n+1}, F_{k-1}^{n+1} \right) & = \left( L F_{k-1}^{n+1}, F^n \right) - \tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-1}^{n+2} \right) \\
+  \left( L F_{k-1}^{n+1}, F_{k-1}^{n+1} \right) & = \left( L F_{k-1}^{n+1}, F^n \right) - \tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-2}^{n+1} \right) \\
   \left( L F_{k-1}^{n+1}, F_k^{n+1} \right) & = \left( L F_{k-1}^{n+1}, F^n \right) - \tau_k \lVert L F_{k-1}^{n+1} \rVert^2
 \end{align*}
 由于$L$具有反对称性，上两式可化为
 \begin{align}
-  {\color{blue}\left( L F_{k-1}^{n+1}, F^n \right)} & = {\color{green}\tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-1}^{n+2} \right)} \nonumber \\
-  {\color{red}\left( L F_{k-1}^{n+1}, F_k^{n+1} \right)} & = {\color{green}\tau_{k-1} \left( L F_{k-2}^{n+1}, L F_{k-1}^{n+1} \right)} - \tau_k \lVert L F_{k-1}^{n+1} \rVert^2 \label{eqn:欧拉前差推导中间式子}
+  {\color{blue}\left( L F_{k-1}^{n+1}, F^n \right)} & = {\color{green}\tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-2}^{n+1} \right)} \nonumber \\
+  {\color{red}\left( L F_{k-1}^{n+1}, F_k^{n+1} \right)} & = {\color{green}\tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-2}^{n+1} \right)} - \tau_k \lVert L F_{k-1}^{n+1} \rVert^2 \label{eqn:欧拉前差推导中间式子}
 \end{align}
 再根据$\lVert F_k^{n+1} \rVert^2 = \lVert F^n \rVert^2$的目标条件，将（\ref{eqn:欧拉前差迭代终步方程}）两端与$F_k^{n+1} + F^n$做内积
 \begin{align*}
   \lVert F_k^{n+1} \rVert^2 - \lVert F^n \rVert^2 & = - \tau_k \left( L F_{k-1}^{n+1}, F_k^{n+1} + F^n \right) \\
   0 & = \left( L F_{k-1}^{n+1}, F_k^{n+1} + F^n \right) \\
   {\color{red}\left( L F_{k-1}^{n+1}, F_k^{n+1} \right)} & = - {\color{blue}\left( L F_{k-1}^{n+1}, F^n \right)} \\
-  & = - {\color{green}\tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-1}^{n+2} \right)}
+  & = - {\color{green}\tau_{k-1} \left( L F_{k-1}^{n+1}, L F_{k-2}^{n+1} \right)}
 \end{align*}
 代入到（\ref{eqn:欧拉前差推导中间式子}）可得
 \begin{align*}
-  \tau_k & = 2 \tau_{k-1} \frac{\left( L F_{k-1}^{n+1}, L F_{k-1}^{n+2} \right)}{\lVert L F_{k-1}^{n+1} \rVert^2}
+  \tau_k & = 2 \tau_{k-1} \frac{\left( L F_{k-1}^{n+1}, L F_{k-2}^{n+1} \right)}{\lVert L F_{k-1}^{n+1} \rVert^2}
 \end{align*}
 
 \end{appendix}
