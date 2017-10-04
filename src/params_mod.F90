@@ -1,5 +1,7 @@
 module params_mod
 
+  use datetime_module
+
   implicit none
 
   ! Contant parameters
@@ -13,6 +15,11 @@ module params_mod
   integer num_lat
   real time_step_size
 
+  character(30) start_time
+  character(30) end_time
+  type(datetime) start_time_object
+  type(datetime) end_time_object
+
   ! Options:
   ! - predict-correct
   ! - runge-kutta
@@ -23,6 +30,8 @@ module params_mod
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
+    start_time, &
+    end_time, &
     time_step_size, &
     time_scheme, &
     time_order, &
@@ -37,6 +46,9 @@ contains
     open(10, file=file_path)
     read(10, nml=qconswm_params)
     close(10)
+
+    start_time_object = strptime(start_time, '%Y-%m-%d %H:%M:%S')
+    end_time_object = strptime(end_time, '%Y-%m-%d %H:%M:%S')
 
   end subroutine params_read
 

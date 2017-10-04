@@ -12,6 +12,7 @@ module dycore_mod
   public dycore_run
   public dycore_final
   public state
+  public static
 
   type coef_type
     ! Coriolis coefficient at full/half meridional grids
@@ -33,6 +34,10 @@ module dycore_mod
     real, allocatable :: v(:,:)
     real, allocatable :: gd(:,:) ! Geopotential depth
   end type state_type
+
+  type static_type
+    real, allocatable :: ghs(:,:) ! Surface geopotential
+  end type static_type
 
   type tend_type
     real, allocatable :: u_adv_lon(:,:)
@@ -69,10 +74,9 @@ module dycore_mod
     real, allocatable :: gd(:,:)
   end type iap_type
 
-  real, allocatable :: ghs(:,:) ! Surface geopotential
-
   type(coef_type) coef
   type(state_type) state(2)
+  type(static_type) static
   type(tend_type) tend(2)
   type(control_type) control
   type(iap_type) iap(2)
@@ -131,23 +135,7 @@ contains
       call parallel_allocate(iap(time_idx)%gd)
     end do
 
-    call parallel_allocate(ghs)
-
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        ghs(i,j) = i + j
-      end do
-    end do
-    call parallel_fill_halo(ghs, left_halo=.true., right_halo=.true., top_halo=.true., bottom_halo=.true.)
-    do j = lbound(ghs, 2), ubound(ghs, 2)
-      do i = lbound(ghs, 1), ubound(ghs, 1)
-        if (i == ubound(ghs, 1)) then
-          write(6, '(F5.1)') ghs(i,j)
-        else
-          write(6, '(F5.1)', advance='no') ghs(i,j)
-        end if
-      end do
-    end do
+    call parallel_allocate(static%ghs)
 
     select case (time_scheme)
     case ('predict-correct')
@@ -215,7 +203,7 @@ contains
       if (allocated(iap(time_idx)%v)) deallocate(iap(time_idx)%v)
       if (allocated(iap(time_idx)%gd)) deallocate(iap(time_idx)%gd)
     end do
-    if (allocated(ghs)) deallocate(ghs)
+    if (allocated(static%ghs)) deallocate(static%ghs)
 
     write(6, *) '[Notice]: Dycore module is finalized.'
 
@@ -264,6 +252,10 @@ contains
 
   subroutine space_operators(state, iap, tend)
 
+    type(state_type), intent(in) :: state
+    type(iap_type), intent(in) :: iap
+    type(tend_type), intent(out) :: tend
+
     integer i, j
 
     call calc_momentum_advection_operator(state, iap, tend)
@@ -309,7 +301,7 @@ contains
 
         vp1 = (state%v(i,j) + state%v(i+1,j)) * mesh%half_cos_lat(j)
         vm1 = (state%v(i,j-1) + state%v(i+1,j-1)) * mesh%half_cos_lat(j-1)
-        tend%u_adv_lat(i,j) = 0.5 * coef%full_dlat(j) * (vp1 * iap%u(i,j+1) - vm1 * iap%ut(i,j-1))
+        tend%u_adv_lat(i,j) = 0.5 * coef%full_dlat(j) * (vp1 * iap%u(i,j+1) - vm1 * iap%u(i,j-1))
       end do
     end do
 
@@ -317,7 +309,7 @@ contains
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         up1 = state%u(i,j) + state%u(i,j+1)
         um1 = state%u(i-1,j) + state%u(i-1,j+1)
-        tend%v_adv_lon(i,j) = 0.5 * coef%half_dlon(j) * (up1 * iap%v(i+1,j) - um1 * iap%vt(i-1,j))
+        tend%v_adv_lon(i,j) = 0.5 * coef%half_dlon(j) * (up1 * iap%v(i+1,j) - um1 * iap%v(i-1,j))
       end do
     end do
 
@@ -385,7 +377,7 @@ contains
     do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
         tend%u_pgf(i,j) = coef%full_dlon(j) * (iap%gd(i,j) + iap%gd(i+1,j)) * &
-          (state%gd(i+1,j) - state%gd(i,j) + ghs(i+1,j) - ghs(i,j))
+          (state%gd(i+1,j) - state%gd(i,j) + static%ghs(i+1,j) - static%ghs(i,j))
       end do
     end do
 
@@ -393,7 +385,7 @@ contains
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%half_lon_end_idx
         tend%v_pgf(i,j) = coef%half_dlat(j) * (iap%gd(i,j) + iap%gd(i,j+1)) * &
-          (state%gd(i,j+1) - state%gd(i,j) + ghs(i,j+1) - ghs(i,j)) * mesh%half_cos_lat(j)
+          (state%gd(i,j+1) - state%gd(i,j) + static%ghs(i,j+1) - static%ghs(i,j)) * mesh%half_cos_lat(j)
       end do
     end do
 
@@ -448,7 +440,8 @@ contains
 
     real, intent(in) :: dt
     type(tend_type), intent(in) :: tend
-    type(state_type), intent(out) :: state
+    type(state_type), intent(in) :: old_state
+    type(state_type), intent(out) :: new_state
 
     integer i, j
 
@@ -481,19 +474,19 @@ contains
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        res = res + dtend1%du(i,j) * dtend2%du(i,j)
+        res = res + tend1%du(i,j) * tend2%du(i,j)
       end do
     end do
 
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        res = res + dtend1%dv(i,j) * dtend2%dv(i,j)
+        res = res + tend1%dv(i,j) * tend2%dv(i,j)
       end do
     end do
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        res = res + dtend1%dgd(i,j) * dtend2%dgd(i,j)
+        res = res + tend1%dgd(i,j) * tend2%dgd(i,j)
       end do
     end do
 
@@ -515,27 +508,31 @@ contains
   subroutine predict_correct()
 
     integer old, new
-    real dt, dt05
+    real dt, half_dt
 
     old = control%old_time_idx
     new = control%new_time_idx
-    dt05 = control%time_step_size * 0.5
+    half_dt = control%time_step_size * 0.5
 
     ! Do first predict step.
     call iap_transform(state(old), iap(old))
     call space_operators(state(old), iap(old), tend(old))
-    call update_state(dt05, tend(old), state(old), state(new))
+    call update_state(half_dt, tend(old), state(old), state(new))
 
     ! Do second predict step.
     call iap_transform(state(new), iap(new))
     call space_operators(state(new), iap(new), tend(old))
-    call update_state(dt05, tend(old), state(old), state(new))
+    call update_state(half_dt, tend(old), state(old), state(new))
 
     ! Do correct step.
     call iap_transform(state(new), iap(new))
     call space_operators(state(new), iap(new), tend(new))
-    ! Calculate modified time step size.
-    dt = control%time_step_size * inner_product(tend(old), tend(new)) / inner_product(tend(new), tend(new))
+    if (qcon_modified) then
+      ! Calculate modified time step size.
+      dt = control%time_step_size * inner_product(tend(old), tend(new)) / inner_product(tend(new), tend(new))
+    else
+      dt = control%time_step_size
+    end if
     call update_state(dt, tend(new), state(old), state(new))
 
   end subroutine predict_correct
