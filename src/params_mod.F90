@@ -11,6 +11,7 @@ module params_mod
 
   integer num_lon
   integer num_lat
+  real time_step_size
 
   ! Options:
   ! - predict-correct
@@ -22,6 +23,7 @@ module params_mod
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
+    time_step_size, &
     time_scheme, &
     time_order, &
     qcon_modified
