@@ -1,6 +1,7 @@
 program qconswm
 
   use params_mod
+  use io_mod
   use dycore_mod
 
   character(256) namelist_file_path
@@ -13,6 +14,8 @@ program qconswm
   call get_command_argument(1, namelist_file_path)
 
   call params_read(namelist_file_path)
+
+  call io_create_dataset(desc='Rossby-Haurwitz test', author='Li Dong <dongli@lasg.iap.ac.cn>', file_prefix='rh_test')
 
   call dycore_init()
 

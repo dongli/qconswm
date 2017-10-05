@@ -25,6 +25,9 @@ module mesh_mod
     real, allocatable :: half_cos_lat(:)
     real, allocatable :: full_sin_lat(:)
     real, allocatable :: half_sin_lat(:)
+    ! For output
+    real, allocatable :: lon_deg(:)
+    real, allocatable :: lat_deg(:)
   end type mesh_type
 
   type(mesh_type) mesh
@@ -48,11 +51,14 @@ contains
     allocate(mesh%half_cos_lat(mesh%num_half_lat))
     allocate(mesh%full_sin_lat(mesh%num_full_lat))
     allocate(mesh%half_sin_lat(mesh%num_half_lat))
+    allocate(mesh%lon_deg(mesh%num_full_lon))
+    allocate(mesh%lat_deg(mesh%num_full_lat))
 
     mesh%dlon = 2 * pi / mesh%num_full_lon
     do i = 1, mesh%num_full_lon
       mesh%full_lon(i) = (i - 1) * mesh%dlon
       mesh%half_lon(i) = mesh%full_lon(i) + 0.5 * mesh%dlon
+      mesh%lon_deg(i) = mesh%full_lon(i) * rad_to_deg
     end do
 
     mesh%dlat = pi / mesh%num_half_lat
@@ -63,10 +69,12 @@ contains
       mesh%half_cos_lat(j) = cos(mesh%half_lat(j))
       mesh%full_sin_lat(j) = sin(mesh%full_lat(j))
       mesh%half_sin_lat(j) = sin(mesh%half_lat(j))
+      mesh%lat_deg(j) = mesh%full_lat(j) * rad_to_deg
     end do
     mesh%full_lat(num_lat) = 0.5 * pi
     mesh%full_cos_lat(num_lat) = cos(mesh%full_lat(num_lat))
     mesh%full_sin_lat(num_lat) = sin(mesh%full_lat(num_lat))
+    mesh%lat_deg(num_lat) = 90
 
     write(6, *) '[Notice]: Mesh module is initialized.'
 

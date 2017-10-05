@@ -1,8 +1,10 @@
 module dycore_mod
 
-  use params_mod
+  use params_mod, time_scheme_in => time_scheme
   use mesh_mod
+  use time_mod
   use parallel_mod
+  use io_mod
 
   implicit none
 
@@ -33,6 +35,9 @@ module dycore_mod
     real, allocatable :: u(:,:)
     real, allocatable :: v(:,:)
     real, allocatable :: gd(:,:) ! Geopotential depth
+    ! Wind on A grid
+    real, allocatable :: ua(:,:)
+    real, allocatable :: va(:,:)
   end type state_type
 
   type static_type
@@ -55,17 +60,10 @@ module dycore_mod
     real, allocatable :: dgd(:,:)
   end type tend_type
 
-  type control_type
-    ! 1: predict-correct
-    ! 2: runge-kutta
-    ! 3: leap-frog
-    integer time_scheme
-    integer time_step
-    integer last_time_step
-    integer old_time_idx
-    integer new_time_idx
-    real time_step_size
-  end type control_type
+  ! 1: predict-correct
+  ! 2: runge-kutta
+  ! 3: leap-frog
+  integer time_scheme
 
   ! IAP transformed variables
   type iap_type
@@ -78,7 +76,6 @@ module dycore_mod
   type(state_type) state(2)
   type(static_type) static
   type(tend_type) tend(2)
-  type(control_type) control
   type(iap_type) iap(2)
 
 contains
@@ -88,6 +85,7 @@ contains
     integer i, j, time_idx
 
     call mesh_init()
+    call time_init()
     call parallel_init()
 
     allocate(coef%full_cori(mesh%num_full_lat))
@@ -117,6 +115,8 @@ contains
       call parallel_allocate(state(time_idx)%u, half_lon=.true.)
       call parallel_allocate(state(time_idx)%v, half_lat=.true.)
       call parallel_allocate(state(time_idx)%gd)
+      call parallel_allocate(state(time_idx)%ua)
+      call parallel_allocate(state(time_idx)%va)
       call parallel_allocate(tend(time_idx)%u_adv_lon, half_lon=.true.)
       call parallel_allocate(tend(time_idx)%u_adv_lat, half_lon=.true.)
       call parallel_allocate(tend(time_idx)%fv, half_lon=.true.)
@@ -137,22 +137,25 @@ contains
 
     call parallel_allocate(static%ghs)
 
-    select case (time_scheme)
+    select case (time_scheme_in)
     case ('predict-correct')
-      control%time_scheme = 1
+      time_scheme = 1
     case ('runge-kutta')
-      control%time_scheme = 2
+      time_scheme = 2
     case ('leap-frog')
-      control%time_scheme = 3
+      time_scheme = 3
     case default
-      write(6, *) '[Error]: Unknown time_scheme ' // trim(time_scheme) // '!'
+      write(6, *) '[Error]: Unknown time_scheme ' // trim(time_scheme_in) // '!'
       stop 1
     end select
 
-    control%time_step = 0
-    control%time_step_size = time_step_size
-    control%old_time_idx = 1
-    control%new_time_idx = 2
+    call io_add_dim('lon', size=mesh%num_full_lon)
+    call io_add_dim('lat', size=mesh%num_full_lat)
+    call io_add_dim('time')
+
+    call io_add_var('u', long_name='u wind component', units='m s-1', dim_names=['lon ', 'lat ', 'time'])
+    call io_add_var('v', long_name='v wind component', units='m s-1', dim_names=['lon ', 'lat ', 'time'])
+    call io_add_var('gd', long_name='geopotential depth', units='m2 s-2', dim_names=['lon ', 'lat ', 'time'])
 
     write(6, *) '[Notice]: Dycore module is initialized.'
 
@@ -160,9 +163,12 @@ contains
 
   subroutine dycore_run()
 
-    do while (control%time_step /= control%last_time_step)
+    call output(old_time_idx)
+    stop
+
+    do while (.not. time_ended())
       call time_integrate()
-      call advance_time()
+      call time_advance()
     end do
 
   end subroutine dycore_run
@@ -186,6 +192,8 @@ contains
       if (allocated(state(time_idx)%u)) deallocate(state(time_idx)%u)
       if (allocated(state(time_idx)%v)) deallocate(state(time_idx)%v)
       if (allocated(state(time_idx)%gd)) deallocate(state(time_idx)%gd)
+      if (allocated(state(time_idx)%ua)) deallocate(state(time_idx)%ua)
+      if (allocated(state(time_idx)%va)) deallocate(state(time_idx)%va)
       if (allocated(tend(time_idx)%u_adv_lon)) deallocate(tend(time_idx)%u_adv_lon)
       if (allocated(tend(time_idx)%u_adv_lat)) deallocate(tend(time_idx)%u_adv_lat)
       if (allocated(tend(time_idx)%v_adv_lon)) deallocate(tend(time_idx)%v_adv_lon)
@@ -209,16 +217,37 @@ contains
 
   end subroutine dycore_final
 
-  subroutine advance_time()
+  subroutine output(time_idx)
 
-    integer tmp
+    integer, intent(in) :: time_idx
 
-    tmp = control%old_time_idx
-    control%old_time_idx = control%new_time_idx
-    control%new_time_idx = tmp
-    control%time_step = control%time_step + 1
+    integer i, j
 
-  end subroutine advance_time
+    ! Convert wind from C grid to A grid.
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        state(time_idx)%ua(i,j) = 0.5 * (state(time_idx)%u(i,j) + state(time_idx)%u(i+1,j))
+      end do
+    end do
+
+    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state(time_idx)%va(i,j) = 0.5 * (state(time_idx)%v(i,j) + state(time_idx)%v(i,j-1))
+      end do
+    end do
+
+    call io_start_output()
+    call io_output('lon', mesh%lon_deg(:))
+    call io_output('lat', mesh%lat_deg(:))
+    call io_output('u', state(time_idx)%ua(parallel%full_lon_start_idx:parallel%full_lon_end_idx, &
+                                           parallel%full_lat_start_idx:parallel%full_lat_end_idx))
+    call io_output('v', state(time_idx)%va(parallel%full_lon_start_idx:parallel%full_lon_end_idx, &
+                                           parallel%full_lat_start_idx:parallel%full_lat_end_idx))
+    call io_output('gd', state(time_idx)%gd(parallel%full_lon_start_idx:parallel%full_lon_end_idx, &
+                                            parallel%full_lat_start_idx:parallel%full_lat_end_idx))
+    call io_end_output()
+
+  end subroutine output
 
   subroutine iap_transform(state, iap)
 
@@ -494,7 +523,7 @@ contains
 
   subroutine time_integrate()
 
-    select case (control%time_scheme)
+    select case (time_scheme)
     case (1)
       call predict_correct()
     case (2)
@@ -510,9 +539,9 @@ contains
     integer old, new
     real dt, half_dt
 
-    old = control%old_time_idx
-    new = control%new_time_idx
-    half_dt = control%time_step_size * 0.5
+    old = old_time_idx
+    new = new_time_idx
+    half_dt = time_step_size * 0.5
 
     ! Do first predict step.
     call iap_transform(state(old), iap(old))
@@ -529,9 +558,9 @@ contains
     call space_operators(state(new), iap(new), tend(new))
     if (qcon_modified) then
       ! Calculate modified time step size.
-      dt = control%time_step_size * inner_product(tend(old), tend(new)) / inner_product(tend(new), tend(new))
+      dt = time_step_size * inner_product(tend(old), tend(new)) / inner_product(tend(new), tend(new))
     else
-      dt = control%time_step_size
+      dt = time_step_size
     end if
     call update_state(dt, tend(new), state(old), state(new))
 
