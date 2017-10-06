@@ -39,6 +39,7 @@ set (source_files
   "src/time_mod.F90"
   "src/parallel_mod.F90"
   "src/dycore_mod.F90"
+  "src/rossby_haurwitz_test_mod.F90"
   "src/io_mod.F90"
   "src/qconswm.F90"
 )

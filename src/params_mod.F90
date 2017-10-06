@@ -8,6 +8,7 @@ module params_mod
   real, parameter :: deg_to_rad = pi / 180.0
   real, parameter :: omega = 2.0 * pi / 86400.0
   real, parameter :: radius = 6.371e6
+  real, parameter :: g = 9.8
 
   integer num_lon
   integer num_lat
