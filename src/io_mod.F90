@@ -143,7 +143,7 @@ contains
     call dataset%dims%insert(name, dim)
 
     ! Add corresponding dimension variable.
-    call io_add_var(name, dataset_name, long_name=long_name, units=units, dim_names=[name])
+    call io_add_var(name, dataset_name, long_name=dim%long_name, units=dim%units, dim_names=[name])
 
   end subroutine io_add_dim
 
