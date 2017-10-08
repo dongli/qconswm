@@ -45,12 +45,10 @@ module parallel_mod
 
   interface parallel_allocate
     module procedure parallel_allocate_1
-    module procedure parallel_allocate_2
   end interface parallel_allocate
 
   interface parallel_fill_halo
     module procedure parallel_fill_halo_1
-    module procedure parallel_fill_halo_2
   end interface parallel_fill_halo
 
 contains
@@ -114,44 +112,23 @@ contains
       allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub))
     end if
 
+    ! Initialize field with zeros.
+    field(:,:) = 0.0
+
   end subroutine parallel_allocate_1
 
-  subroutine parallel_allocate_2(field, half_lon, half_lat)
-
-    real, intent(out), allocatable ::  field(:,:,:)
-    logical, intent(in), optional :: half_lon
-    logical, intent(in), optional :: half_lat
-
-    integer time_lb, time_ub
-
-    ! Only support two time levels for now.
-    time_lb = 1
-    time_ub = 2
-
-    if (present(half_lon) .and. half_lon .and. present(half_lat) .and. half_lat) then
-      allocate(field(parallel%half_lon_lb:parallel%half_lon_ub,parallel%half_lat_lb:parallel%half_lat_ub,time_lb:time_ub))
-    else if (present(half_lon) .and. half_lon) then
-      allocate(field(parallel%half_lon_lb:parallel%half_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub,time_lb:time_ub))
-    else if (present(half_lat) .and. half_lat) then
-      allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%half_lat_lb:parallel%half_lat_ub,time_lb:time_ub))
-    else
-      allocate(field(parallel%full_lon_lb:parallel%full_lon_ub,parallel%full_lat_lb:parallel%full_lat_ub,time_lb:time_ub))
-    end if
-
-  end subroutine parallel_allocate_2
-
-  subroutine parallel_fill_halo_1(field, left_halo, right_halo, top_halo, bottom_halo, all_halo)
+  subroutine parallel_fill_halo_1(field, all_halo, left_halo, right_halo, top_halo, bottom_halo)
 
     real, intent(inout) :: field(:,:)
+    logical, intent(in), optional :: all_halo
     logical, intent(in), optional :: left_halo
     logical, intent(in), optional :: right_halo
     logical, intent(in), optional :: top_halo
     logical, intent(in), optional :: bottom_halo
-    logical, intent(in), optional :: all_halo
 
     integer i, j, m, n
 
-    if (present(left_halo) .and. left_halo) then
+    if ((present(all_halo) .and. all_halo) .or. (present(left_halo) .and. left_halo)) then
       m = lbound(field, 1) - 1
       n = ubound(field, 1) - 2 * parallel%lon_halo_width
       do j = lbound(field, 2), ubound(field, 2)
@@ -163,7 +140,7 @@ contains
 
     ! |             |                             |              |              |
     ! lb            lb + w                        ub - 2w        ub - w         ub
-    if (present(right_halo) .and. right_halo) then
+    if ((present(all_halo) .and. all_halo) .or. (present(right_halo) .and. right_halo)) then
       m = ubound(field, 1) - parallel%lon_halo_width
       n = lbound(field, 1) + parallel%lon_halo_width - 1
       do j = lbound(field, 2), ubound(field, 2)
@@ -173,40 +150,7 @@ contains
       end do
     end if
 
-    if (present(top_halo) .and. top_halo) then
-      m = lbound(field, 2) - 1
-      n = ubound(field, 2) - 2 * parallel%lat_halo_width
-      do j = 1, parallel%lat_halo_width
-        do i = lbound(field, 1), ubound(field, 1)
-          field(i,m+j) = field(i,n+j)
-        end do
-      end do
-    end if
-
-    if (present(bottom_halo) .and. bottom_halo) then
-      m = ubound(field, 2) - parallel%lat_halo_width
-      n = lbound(field, 2) + parallel%lat_halo_width - 1
-      do j = 1, parallel%lat_halo_width
-        do i = lbound(field, 1), ubound(field, 1)
-          field(i,m+j) = field(i,n+j)
-        end do
-      end do
-    end if
-
   end subroutine parallel_fill_halo_1
-
-  subroutine parallel_fill_halo_2(field, time_idx, left_halo, right_halo, top_halo, bottom_halo)
-
-    real, intent(inout) :: field(:,:,:)
-    integer, intent(in) :: time_idx
-    logical, intent(in), optional :: left_halo
-    logical, intent(in), optional :: right_halo
-    logical, intent(in), optional :: top_halo
-    logical, intent(in), optional :: bottom_halo
-
-    call parallel_fill_halo_1(field(:,:,time_idx), left_halo, right_halo, top_halo, bottom_halo)
-
-  end subroutine parallel_fill_halo_2
 
   subroutine parallel_zonal_sum(send_buf, recv_buf)
 

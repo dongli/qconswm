@@ -15,8 +15,8 @@
 \section{出发方程}
 
 \begin{align}
-	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) + f V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
-  \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) - f U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
+	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) + f V + \frac{u \tan{\varphi}}{a} V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
+  \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) - f U - \frac{u \tan{\varphi}}{a} U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
   \frac{\partial \phi}{\partial t} & = - \frac{1}{a \cos{\varphi}} \left( \frac{\partial H U}{\partial \lambda} + \frac{\partial H V \cos{\varphi}}{\partial \varphi} \right)
 \end{align}
 其中$\varphi$是位势厚度，$\varphi_s$是地表位势抬升，$H = \sqrt{\varphi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\phi$是纬度。注意前两式中的平流项采用的是
@@ -112,6 +112,13 @@
       0 & j = [1, N_\varphi]
     \end{array}
   \right. \\
+  \left(\frac{u \tan{\varphi}}{a} V\right)_{i+\frac{1}{2},j} & \approx \left\{
+    \begin{array}{ll}
+      \frac{1}{4 a} \left[ \left( u_{i+\frac{1}{2},j}^* + u_{i+\frac{1}{2},j+1}^* \right) \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) \right. \\
+      \left. + \left( u_{i+\frac{1}{2},j}^* + u_{i+\frac{1}{2},j-1}^* \right) \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      0 & j = [1, N_\varphi]
+    \end{array}
+  \right. \\
   \left( H \frac{\partial \phi^*}{\partial \lambda} \right)_{i+\frac{1}{2},j} & = \left\{
     \begin{array}{ll}
       \frac{H_{i,j} + H_{i+1,j}}{2 \Delta{\lambda}} \left( \phi_{i+1,j}^* - \phi_{i,j}^* \right) & j = [2, 3, \dots, N_\varphi - 1] \\
@@ -134,12 +141,17 @@
   & \quad\quad\quad\quad\quad j = [1,2,\dots,N_\varphi - 1] \\
   \left( 2 \frac{\partial v^* V}{\partial \varphi} - V \frac{\partial v^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \left\{
     \begin{array}{ll}
-      \frac{V_{i,j+\frac{3}{2}}}{2 \Delta{\varphi}} \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}} \right) & j = 1 \\
+      \frac{V_{i,j+\frac{3}{2}}}{2 \Delta{\varphi}} \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right) & j = 1 \\
       \frac{1}{2 \Delta{\varphi}} \left[ \left( v_{i,j+\frac{1}{2}}^* + v_{i,j+\frac{3}{2}}^* \right) V_{i,j+\frac{3}{2}} - \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) V_{i,j-\frac{1}{2}} \right] & j = [2,3,\dots,N_\varphi - 2] \\
       - \frac{V_{i,j-\frac{1}{2}}}{2 \Delta{\varphi}} \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) & j = N_\varphi - 1
     \end{array}
   \right. \\
   \left( f U \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \ \right] \quad j = [1, 2, \dots, N_\varphi - 1] \\
+  \left(\frac{u \tan{\varphi}}{a} U\right)_{i,j+\frac{1}{2}} & \approx
+    \begin{array}{ll}
+      \frac{1}{4 a} \left[ \left( u_{i+\frac{1}{2},j}^* + u_{i+\frac{1}{2},j+1}^* \right) \left( U_{i+\frac{1}{2},j} + U_{i+\frac{1}{2},j+1} \right) \right. \\
+      \left. + \left( u_{i-\frac{1}{2},j}^* + u_{i-\frac{1}{2},j+1}^* \right) \left( U_{i-\frac{1}{2},j} + U_{i-\frac{1}{2},j+1} \right) \right] & j = [1, 2, \dots, N_\varphi]
+    \end{array} \\
   \left( H \frac{\partial \phi^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \frac{H_{i,j} + H_{i,j+1}}{2 \Delta{\varphi}} \left( \phi_{i,j+1}^* - \phi_{i,j}^* \right) \quad j = [1, 2, \dots, N_\varphi - 1]
 \end{align}
 

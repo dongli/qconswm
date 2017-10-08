@@ -65,16 +65,24 @@ contains
     do j = 1, mesh%num_half_lat
       mesh%full_lat(j) = - 0.5 * pi + (j - 1) * mesh%dlat
       mesh%half_lat(j) = mesh%full_lat(j) + 0.5 * mesh%dlat
-      mesh%full_cos_lat(j) = cos(mesh%full_lat(j))
-      mesh%half_cos_lat(j) = cos(mesh%half_lat(j))
-      mesh%full_sin_lat(j) = sin(mesh%full_lat(j))
-      mesh%half_sin_lat(j) = sin(mesh%half_lat(j))
       mesh%lat_deg(j) = mesh%full_lat(j) * rad_to_deg
     end do
     mesh%full_lat(num_lat) = 0.5 * pi
-    mesh%full_cos_lat(num_lat) = cos(mesh%full_lat(num_lat))
-    mesh%full_sin_lat(num_lat) = sin(mesh%full_lat(num_lat))
-    mesh%lat_deg(num_lat) = 90
+    mesh%lat_deg(num_lat) = 90.0
+
+    do j = 1, mesh%num_half_lat
+      mesh%half_cos_lat(j) = cos(mesh%half_lat(j))
+      mesh%half_sin_lat(j) = sin(mesh%half_lat(j))
+    end do
+
+    do j = 2, mesh%num_full_lat - 1
+      mesh%full_cos_lat(j) = cos(mesh%full_lat(j))
+      mesh%full_sin_lat(j) = sin(mesh%full_lat(j))
+    end do
+    mesh%full_cos_lat(1) = mesh%half_cos_lat(1) * 0.25
+    mesh%full_sin_lat(1) = -1.0
+    mesh%full_cos_lat(mesh%num_full_lat) = mesh%half_cos_lat(mesh%num_half_lat) * 0.25
+    mesh%full_sin_lat(mesh%num_full_lat) = 1.0
 
     write(6, *) '[Notice]: Mesh module is initialized.'
 
@@ -86,6 +94,12 @@ contains
     if (allocated(mesh%full_lat)) deallocate(mesh%full_lat)
     if (allocated(mesh%half_lon)) deallocate(mesh%half_lon)
     if (allocated(mesh%half_lat)) deallocate(mesh%half_lat)
+    if (allocated(mesh%full_cos_lat)) deallocate(mesh%full_cos_lat)
+    if (allocated(mesh%half_cos_lat)) deallocate(mesh%half_cos_lat)
+    if (allocated(mesh%full_sin_lat)) deallocate(mesh%full_sin_lat)
+    if (allocated(mesh%half_sin_lat)) deallocate(mesh%half_sin_lat)
+    if (allocated(mesh%lon_deg)) deallocate(mesh%lon_deg)
+    if (allocated(mesh%lat_deg)) deallocate(mesh%lat_deg)
 
     write(6, *) '[Notice]: Mesh module is finalized.'
 

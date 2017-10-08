@@ -1,6 +1,7 @@
 module time_mod
 
-  use datetime_module
+  use datetime_mod
+  use timedelta_mod
   use params_mod, time_step_size_in => time_step_size, time_units_in => time_units
 
   implicit none
@@ -17,14 +18,13 @@ module time_mod
   public new_time_idx
   public time_units
 
-  type(datetime) start_time
-  type(datetime) end_time
-  type(datetime) curr_time
+  type(datetime_type) start_time
+  type(datetime_type) end_time
+  type(datetime_type) curr_time
+  type(timedelta_type) time_step_size
   integer time_step
-  integer last_time_step
   integer old_time_idx
   integer new_time_idx
-  real time_step_size
   character(30) time_units
   character(30) curr_time_format
 
@@ -38,14 +38,13 @@ contains
       hour=hour_range(2), minute=minute_range(2), second=second_range(2))
 
     time_step = 0
-    last_time_step = 0
     old_time_idx = 1
     new_time_idx = 2
-    time_step_size = time_step_size_in
+    time_step_size = timedelta(seconds=time_step_size_in)
     time_units = time_units_in
 
     curr_time = start_time
-    curr_time_format = curr_time%strftime('%Y-%m-%dT%T')
+    curr_time_format = curr_time%isoformat()
 
   end subroutine time_init
 
@@ -58,11 +57,14 @@ contains
     new_time_idx = tmp
     time_step = time_step + 1
 
+    curr_time = curr_time + time_step_size
+    curr_time_format = curr_time%isoformat()
+
   end subroutine time_advance
 
   logical function time_ended() result(res)
 
-    res = time_step == last_time_step
+    res = curr_time > end_time
 
   end function time_ended
 

@@ -351,7 +351,6 @@ contains
       write(6, *) '[Error]: Failed to close dataset ' // trim(dataset%name) // '!'
       stop 1
     end if
-    stop
 
   end subroutine io_end_output
 

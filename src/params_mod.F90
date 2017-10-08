@@ -12,7 +12,7 @@ module params_mod
 
   integer num_lon
   integer num_lat
-  real time_step_size
+  real(8) time_step_size
  
   integer :: year_range(2) = [0, 0]
   integer :: month_range(2) = [1, 1]
