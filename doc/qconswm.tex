@@ -114,8 +114,7 @@
   \right. \\
   \left(\frac{u \tan{\varphi}}{a} V\right)_{i+\frac{1}{2},j} & \approx \left\{
     \begin{array}{ll}
-      \frac{1}{4 a} \left[ \left( u_{i+\frac{1}{2},j}^* + u_{i+\frac{1}{2},j+1}^* \right) \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) \right. \\
-      \left. + \left( u_{i+\frac{1}{2},j}^* + u_{i+\frac{1}{2},j-1}^* \right) \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      \frac{u_{i+\frac{1}{2},j}^*}{4 a} \left[ V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} + V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right] & j = [2, 3, \dots, N_\varphi - 1] \\
       0 & j = [1, N_\varphi]
     \end{array}
   \right. \\
@@ -149,8 +148,8 @@
   \left( f U \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \ \right] \quad j = [1, 2, \dots, N_\varphi - 1] \\
   \left(\frac{u \tan{\varphi}}{a} U\right)_{i,j+\frac{1}{2}} & \approx
     \begin{array}{ll}
-      \frac{1}{4 a} \left[ \left( u_{i+\frac{1}{2},j}^* + u_{i+\frac{1}{2},j+1}^* \right) \left( U_{i+\frac{1}{2},j} + U_{i+\frac{1}{2},j+1} \right) \right. \\
-      \left. + \left( u_{i-\frac{1}{2},j}^* + u_{i-\frac{1}{2},j+1}^* \right) \left( U_{i-\frac{1}{2},j} + U_{i-\frac{1}{2},j+1} \right) \right] & j = [1, 2, \dots, N_\varphi]
+      \frac{1}{4 a} \left( u_{i+\frac{1}{2},j}^* U_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1}^* U_{i+\frac{1}{2},j+1} \right. \\
+      \left. + u_{i-\frac{1}{2},j}^* U_{i-\frac{1}{2},j} + u_{i-\frac{1}{2},j+1}^* U_{i-\frac{1}{2},j+1} \right) & j = [1, 2, \dots, N_\varphi]
     \end{array} \\
   \left( H \frac{\partial \phi^*}{\partial \varphi} \right)_{i,j+\frac{1}{2}} & \approx \frac{H_{i,j} + H_{i,j+1}}{2 \Delta{\varphi}} \left( \phi_{i,j+1}^* - \phi_{i,j}^* \right) \quad j = [1, 2, \dots, N_\varphi - 1]
 \end{align}

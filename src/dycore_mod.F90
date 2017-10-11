@@ -103,6 +103,8 @@ contains
       coef%full_dlon(j) = 2.0 * radius * mesh%dlon * mesh%full_cos_lat(j)
       coef%full_dlat(j) = 2.0 * radius * mesh%dlat * mesh%full_cos_lat(j)
     end do
+    coef%curv(1) = 0.0
+    coef%curv(mesh%num_full_lat) = 0.0
 
     do j = 1, mesh%num_half_lat
       coef%half_cori(j) = 2.0 * omega * mesh%half_sin_lat(j)
@@ -338,7 +340,7 @@ contains
         um1 = state%u(i,j) + state%u(i-1,j)
         tend%u_adv_lon(i,j) = 0.5 / coef%full_dlon(j) * (up1 * iap%u(i+1,j) - um1 * iap%u(i-1,j))
 
-        vp1 = (state%v(i,j) + state%v(i+1,j)) * mesh%half_cos_lat(j)
+        vp1 = (state%v(i,j  ) + state%v(i+1,j  )) * mesh%half_cos_lat(j  )
         vm1 = (state%v(i,j-1) + state%v(i+1,j-1)) * mesh%half_cos_lat(j-1)
         tend%u_adv_lat(i,j) = 0.5 / coef%full_dlat(j) * (vp1 * iap%u(i,j+1) - vm1 * iap%u(i,j-1))
       end do
@@ -347,7 +349,7 @@ contains
     ! V
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        up1 = state%u(i,j) + state%u(i,j+1)
+        up1 = state%u(i,  j) + state%u(i,  j+1)
         um1 = state%u(i-1,j) + state%u(i-1,j+1)
         tend%v_adv_lon(i,j) = 0.5 / coef%half_dlon(j) * (up1 * iap%v(i+1,j) - um1 * iap%v(i-1,j))
       end do
@@ -414,17 +416,18 @@ contains
 
     do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        tend%cv(i,j) = 0.125 * &
-          ((coef%curv(j) * state%u(i,j) + coef%curv(j+1) * state%u(i,j+1)) * (iap%v(i,j  ) + iap%v(i+1,j  )) + &
-           (coef%curv(j) * state%u(i,j) + coef%curv(j-1) * state%u(i,j-1)) * (iap%v(i,j-1) + iap%v(i+1,j-1)))
+        tend%cv(i,j) = 0.25 * coef%curv(j) * state%u(i,j) * &
+          (iap%v(i,j) + iap%v(i+1,j) + iap%v(i,j-1) + iap%v(i+1,j-1))
       end do
     end do
 
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        tend%cu(i,j) = 0.125 * &
-          ((coef%curv(j) * state%u(i,  j) + coef%curv(j+1) * state%u(i,  j+1)) * (iap%u(i,  j) + iap%u(i,  j+1)) + &
-           (coef%curv(j) * state%u(i-1,j) + coef%curv(j+1) * state%u(i-1,j+1)) * (iap%u(i-1,j) + iap%u(i-1,j+1)))
+        tend%cu(i,j) = 0.25 * &
+          (coef%curv(j  ) * state%u(i,  j  ) * iap%u(i,  j  ) + &
+           coef%curv(j+1) * state%u(i,  j+1) * iap%u(i,  j+1) + &
+           coef%curv(j  ) * state%u(i-1,j  ) * iap%u(i-1,j  ) + &
+           coef%curv(j+1) * state%u(i-1,j+1) * iap%u(i-1,j+1))
       end do
     end do
 
@@ -618,7 +621,7 @@ contains
     end do
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        total_energy = total_energy + iap%gd(i,j)**4 * mesh%full_cos_lat(j)
+        total_energy = total_energy + (iap%gd(i,j)**2 + static%ghs(i,j))**2 * mesh%full_cos_lat(j)
       end do
     end do
 
