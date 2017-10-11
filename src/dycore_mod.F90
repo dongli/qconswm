@@ -5,6 +5,7 @@ module dycore_mod
   use time_mod
   use parallel_mod
   use io_mod
+  use types_mod
 
   implicit none
 
@@ -16,62 +17,10 @@ module dycore_mod
   public state
   public static
 
-  type coef_type
-    ! Coriolis coefficient at full/half meridional grids
-    real, allocatable :: full_cori(:)
-    real, allocatable :: half_cori(:)
-    ! Curvature coefficient at full meridional grids 
-    real, allocatable :: curv(:)
-    ! Zonal difference coefficient at full/half meridional grids
-    real, allocatable :: full_dlon(:)
-    real, allocatable :: half_dlon(:)
-    ! Meridional difference coefficient at full/half meridional grids
-    real, allocatable :: full_dlat(:)
-    real, allocatable :: half_dlat(:)
-  end type coef_type
-
-  type state_type
-    real, allocatable :: u(:,:)
-    real, allocatable :: v(:,:)
-    real, allocatable :: gd(:,:) ! Geopotential depth
-    ! Wind on A grid
-    real, allocatable :: ua(:,:)
-    real, allocatable :: va(:,:)
-  end type state_type
-
-  type static_type
-    real, allocatable :: ghs(:,:) ! Surface geopotential
-  end type static_type
-
-  type tend_type
-    real, allocatable :: u_adv_lon(:,:)
-    real, allocatable :: u_adv_lat(:,:)
-    real, allocatable :: v_adv_lon(:,:)
-    real, allocatable :: v_adv_lat(:,:)
-    real, allocatable :: fu(:,:)
-    real, allocatable :: fv(:,:)
-    real, allocatable :: cu(:,:)
-    real, allocatable :: cv(:,:)
-    real, allocatable :: u_pgf(:,:)
-    real, allocatable :: v_pgf(:,:)
-    real, allocatable :: mass_div_lon(:,:)
-    real, allocatable :: mass_div_lat(:,:)
-    real, allocatable :: du(:,:)
-    real, allocatable :: dv(:,:)
-    real, allocatable :: dgd(:,:)
-  end type tend_type
-
   ! 1: predict-correct
   ! 2: runge-kutta
   ! 3: leap-frog
   integer time_scheme
-
-  ! IAP transformed variables
-  type iap_type
-    real, allocatable :: u(:,:)
-    real, allocatable :: v(:,:)
-    real, allocatable :: gd(:,:)
-  end type iap_type
 
   type(coef_type) coef
   type(state_type) state(2)
