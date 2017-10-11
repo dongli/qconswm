@@ -30,18 +30,22 @@ contains
 
   subroutine rossby_haurwitz_test_set_initial_condition()
 
-    real a, b, c
+    real a, b, c, cos_lat
     integer i, j
+    logical is_pole
 
     write(6, *) '[Notice]: Use Rossby-Haurwitz wave initial condition.'
 
     static%ghs(:,:) = 0.0
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      ! NOTE: Since we set full_cos_lat at Poles to nearest 0.25 * half_cos_lat, we need to set it to zero here.
+      is_pole = j == parallel%full_lat_south_pole_idx .or. j == parallel%full_lat_north_pole_idx
+      cos_lat = merge(0.0, mesh%full_cos_lat(j), is_pole)
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        a = mesh%full_cos_lat(j)
-        b = R * mesh%full_cos_lat(j)**(R - 1) * mesh%full_sin_lat(j)**2 * cos(R * mesh%half_lon(i))
-        c = mesh%full_cos_lat(j)**(R + 1) * cos(R * mesh%half_lon(i))
+        a = cos_lat
+        b = R * cos_lat**(R - 1) * mesh%full_sin_lat(j)**2 * cos(R * mesh%half_lon(i))
+        c = cos_lat**(R + 1) * cos(R * mesh%half_lon(i))
         state(1)%u(i,j) = radius * omg * (a + b - c)
       end do
     end do
@@ -58,12 +62,13 @@ contains
     call parallel_fill_halo(state(1)%v, all_halo=.true.)
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      a = 0.5 * omg * (2 * omega + omg) * mesh%full_cos_lat(j)**2 + &
-        0.25 * omg**2 * mesh%full_cos_lat(j)**(2 * R) * &
-        ((R + 1) * mesh%full_cos_lat(j)**2 + 2 * R**2 - R - 2 - 2 * R**2 * mesh%full_cos_lat(j)**(-2))
-      b = 2 * (omega + omg) * omg * mesh%full_cos_lat(j)**R * &
-        (R**2 + 2 * R + 2 - (R + 1)**2 * mesh%full_cos_lat(j)**2) / (R + 1) / (R + 2)
-      c = 0.25 * omg**2 * mesh%full_cos_lat(j)**(2 * R) * ((R + 1) * mesh%full_cos_lat(j)**2 - R - 2)
+      is_pole = j == parallel%full_lat_south_pole_idx .or. j == parallel%full_lat_north_pole_idx
+      cos_lat = merge(0.0, mesh%full_cos_lat(j), is_pole)
+      a = 0.5 * omg * (2 * omega + omg) * cos_lat**2 + &
+        0.25 * omg**2 * ((R + 1) * cos_lat**(2 * R + 2) + (2 * R**2 - R - 2) * cos_lat**(2 * R) - 2 * R**2 * cos_lat**(2 * R - 2))
+      b = 2 * (omega + omg) * omg * cos_lat**R * &
+        (R**2 + 2 * R + 2 - (R + 1)**2 * cos_lat**2) / (R + 1) / (R + 2)
+      c = 0.25 * omg**2 * cos_lat**(2 * R) * ((R + 1) * cos_lat**2 - R - 2)
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         state(1)%gd(i,j) = gd0 + radius**2 * (a + b * cos(R * mesh%full_lon(i)) + c * cos(2 * R * mesh%full_lon(i)))
       end do

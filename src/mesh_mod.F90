@@ -79,6 +79,7 @@ contains
       mesh%full_cos_lat(j) = cos(mesh%full_lat(j))
       mesh%full_sin_lat(j) = sin(mesh%full_lat(j))
     end do
+    ! FIXME: Should we set full_cos_lat to 0.25 * half_cos_lat here?
     mesh%full_cos_lat(1) = mesh%half_cos_lat(1) * 0.25
     mesh%full_sin_lat(1) = -1.0
     mesh%full_cos_lat(mesh%num_full_lat) = mesh%half_cos_lat(mesh%num_half_lat) * 0.25

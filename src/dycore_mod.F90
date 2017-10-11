@@ -89,8 +89,7 @@ contains
     call time_init()
     call parallel_init()
 
-    allocate(coef%full_cori(mesh%num_full_lat))
-    allocate(coef%half_cori(mesh%num_half_lat))
+    allocate(coef%cori(mesh%num_full_lat))
     allocate(coef%curv(mesh%num_full_lat))
     allocate(coef%full_dlon(mesh%num_full_lat))
     allocate(coef%half_dlon(mesh%num_half_lat))
@@ -98,7 +97,7 @@ contains
     allocate(coef%half_dlat(mesh%num_half_lat))
 
     do j = 1, mesh%num_full_lat
-      coef%full_cori(j) = 2.0 * omega * mesh%full_sin_lat(j)
+      coef%cori(j) = 2.0 * omega * mesh%full_sin_lat(j)
       coef%curv(j) = mesh%full_sin_lat(j) / mesh%full_cos_lat(j) / radius
       coef%full_dlon(j) = 2.0 * radius * mesh%dlon * mesh%full_cos_lat(j)
       coef%full_dlat(j) = 2.0 * radius * mesh%dlat * mesh%full_cos_lat(j)
@@ -107,7 +106,6 @@ contains
     coef%curv(mesh%num_full_lat) = 0.0
 
     do j = 1, mesh%num_half_lat
-      coef%half_cori(j) = 2.0 * omega * mesh%half_sin_lat(j)
       coef%half_dlon(j) = 2.0 * radius * mesh%dlon * mesh%half_cos_lat(j)
       coef%half_dlat(j) = 2.0 * radius * mesh%dlat * mesh%half_cos_lat(j)
     end do
@@ -186,8 +184,7 @@ contains
     call mesh_final()
     call parallel_final()
 
-    if (allocated(coef%full_cori)) deallocate(coef%full_cori)
-    if (allocated(coef%half_cori)) deallocate(coef%half_cori)
+    if (allocated(coef%cori)) deallocate(coef%cori)
     if (allocated(coef%curv)) deallocate(coef%curv)
     if (allocated(coef%full_dlon)) deallocate(coef%full_dlon)
     if (allocated(coef%half_dlon)) deallocate(coef%half_dlon)
@@ -388,21 +385,39 @@ contains
     type(iap_type), intent(in) :: iap
     type(tend_type), intent(inout) :: tend
 
+    real c1, c2
     integer i, j
 
     do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      c1 = mesh%half_cos_lat(j  ) / mesh%full_cos_lat(j)
+      c2 = mesh%half_cos_lat(j-1) / mesh%full_cos_lat(j)
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        tend%fv(i,j) = 0.25 * (coef%half_cori(j  ) * (iap%v(i,j  ) + iap%v(i+1,j  )) + &
-                               coef%half_cori(j-1) * (iap%v(i,j-1) + iap%v(i+1,j-1)))
+        tend%fv(i,j) = 0.25 * coef%cori(j) * (c1 * (iap%v(i,j  ) + iap%v(i+1,j  )) + &
+                                              c2 * (iap%v(i,j-1) + iap%v(i+1,j-1)))
       end do
     end do
 
-    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+    do j = parallel%half_lat_start_idx_no_pole, parallel%half_lat_end_idx_no_pole
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        tend%fu(i,j) = 0.25 * (coef%full_cori(j  ) * (iap%u(i,j  ) + iap%u(i-1,j  )) + &
-                               coef%full_cori(j+1) * (iap%u(i,j+1) + iap%u(i-1,j+1)))
+        tend%fu(i,j) = 0.25 * (coef%cori(j  ) * (iap%u(i,j  ) + iap%u(i-1,j  )) + &
+                               coef%cori(j+1) * (iap%u(i,j+1) + iap%u(i-1,j+1)))
       end do
     end do
+
+    ! Avoid non-zero u at Poles, we set fu at Poles explicitly.
+    if (parallel%has_south_pole) then
+      j = parallel%half_lat_south_pole_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        tend%fu(i,j) = 0.25 * coef%cori(j+1) * (iap%u(i,j+1) + iap%u(i-1,j+1))
+      end do
+    end if
+
+    if (parallel%has_north_pole) then
+      j = parallel%half_lat_north_pole_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        tend%fu(i,j) = 0.25 * coef%cori(j) * (iap%u(i,j) + iap%u(i-1,j))
+      end do
+    end if
 
   end subroutine coriolis_operator
 

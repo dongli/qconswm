@@ -107,8 +107,7 @@
   \right. \\
   \left(f V\right)_{i+\frac{1}{2},j} & = \left\{
     \begin{array}{ll}
-      \frac{1}{4} \left[ f_{j+\frac{1}{2}} \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) \right. \\
-      \left. + f_{j-\frac{1}{2}} \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) \right] & j = [2, 3, \dots, N_\varphi - 1] \\
+      \frac{f_{j}}{4} \left[ \frac{\cos{\varphi_{j+\frac{1}{2}}}}{\cos{\varphi_{j}}} \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) + \frac{\cos{\varphi_{j-\frac{1}{2}}}}{\cos{\varphi_{j}}} \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) \right] & j = [2, 3, \dots, N_\varphi - 1] \\
       0 & j = [1, N_\varphi]
     \end{array}
   \right. \\
@@ -145,7 +144,7 @@
       - \frac{V_{i,j-\frac{1}{2}}}{2 \Delta{\varphi}} \left( v_{i,j-\frac{1}{2}}^* + v_{i,j+\frac{1}{2}}^* \right) & j = N_\varphi - 1
     \end{array}
   \right. \\
-  \left( f U \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \ \right] \quad j = [1, 2, \dots, N_\varphi - 1] \\
+  \left( f U \right)_{i,j+\frac{1}{2}} & \approx \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \right] \quad j = [1, 2, \dots, N_\varphi - 1] \\
   \left(\frac{u \tan{\varphi}}{a} U\right)_{i,j+\frac{1}{2}} & \approx
     \begin{array}{ll}
       \frac{1}{4 a} \left( u_{i+\frac{1}{2},j}^* U_{i+\frac{1}{2},j} + u_{i+\frac{1}{2},j+1}^* U_{i+\frac{1}{2},j+1} \right. \\
@@ -439,5 +438,12 @@
 \end{align*}
 
 \end{appendix}
+
+\begin{align*}
+  \frac{f_{j}}{4} \left( \frac{\cos{\varphi_{j+\frac{1}{2}}}}{\cos{\varphi_{j}}} \left( V_{i,j+\frac{1}{2}} + V_{i+1,j+\frac{1}{2}} \right) + \frac{\cos{\varphi_{j-\frac{1}{2}}}}{\cos{\varphi_{j}}} \left( V_{i,j-\frac{1}{2}} + V_{i+1,j-\frac{1}{2}} \right) \right)_{i+\frac{1}{2},j} U_{i+\frac{1}{2},j} \cos{\varphi_j} \\
+{\color{red}f_j \cos{\varphi_{j+\frac{1}{2}}} U_{i+\frac{1}{2},j} V_{i,j+\frac{1}{2}}} {\color{blue}+ f_j \cos{\varphi_{j+\frac{1}{2}}} U_{i+\frac{1}{2},j} V_{i+1,j+\frac{1}{2}}} {\color{green}+ f_j \cos{\varphi_{j-\frac{1}{2}}} U_{i+\frac{1}{2},j} V_{i,j-\frac{1}{2}}} {\color{magenta}+ f_j \cos{\varphi_{j-\frac{1}{2}}} U_{i+\frac{1}{2},j} V_{i+1,j-\frac{1}{2}}} \\
+- \left( \frac{1}{4} \left[ f_{j} \left( U_{i-\frac{1}{2},j} + U_{i+\frac{1}{2},j} \right) + f_{j+1} \left( U_{i-\frac{1}{2},j+1} + U_{i+\frac{1}{2},j+1} \right) \right] \right)_{i,j+\frac{1}{2}} V_{i,j+\frac{1}{2}} \cos{\varphi_{j+\frac{1}{2}}} \\
+{\color{blue}- f_j \cos{\varphi_{j+\frac{1}{2}}} U_{i-\frac{1}{2},j} V_{i,j+\frac{1}{2}}} {\color{red}- f_j \cos{\varphi_{j+\frac{1}{2}}} U_{i+\frac{1}{2},j} V_{i,j+\frac{1}{2}}} {\color{magenta}- f_{j+1} \cos{\varphi_{j+\frac{1}{2}}} U_{i-\frac{1}{2},j+1} V_{i,j+\frac{1}{2}}} {\color{green}- f_{j+1} \cos{\varphi_{j+\frac{1}{2}}} U_{i+\frac{1}{2},j+1} V_{i,j+\frac{1}{2}}}
+\end{align*}
 
 \end{document}
