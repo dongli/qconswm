@@ -39,6 +39,8 @@ module parallel_mod
     integer full_lon_ub, half_lon_ub
     integer full_lat_lb, half_lat_lb
     integer full_lat_ub, half_lat_ub
+    logical has_south_pole
+    logical has_north_pole
   end type parallel_params_type
 
   type(parallel_params_type) parallel
@@ -73,6 +75,9 @@ contains
     parallel%full_lat_north_pole_idx = mesh%num_full_lat
     parallel%half_lat_south_pole_idx = 1
     parallel%half_lat_north_pole_idx = mesh%num_half_lat
+
+    parallel%has_south_pole = parallel%full_lat_start_idx == parallel%full_lat_south_pole_idx
+    parallel%has_north_pole = parallel%full_lat_end_idx == parallel%full_lat_north_pole_idx
 
     parallel%lon_halo_width = 1
     parallel%lat_halo_width = 1
