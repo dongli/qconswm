@@ -310,7 +310,7 @@ contains
     end do
 
     ! Handle meridional advection at South Pole.
-    if (parallel%half_lat_start_idx == parallel%half_lat_south_pole_idx) then
+    if (parallel%has_south_pole) then
       j = parallel%half_lat_south_pole_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         vp1 = state%v(i,j) * mesh%half_cos_lat(j) + state%v(i,j+1) * mesh%half_cos_lat(j+1)
@@ -319,7 +319,7 @@ contains
     end if
 
     ! Handle meridional advection at North Pole.
-    if (parallel%half_lat_end_idx == parallel%half_lat_north_pole_idx) then
+    if (parallel%has_north_pole) then
       j = parallel%half_lat_north_pole_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         vm1 = state%v(i,j) * mesh%half_cos_lat(j) + state%v(i,j-1) * mesh%half_cos_lat(j-1)
@@ -346,27 +346,33 @@ contains
       end do
     end do
 
-    do j = parallel%half_lat_start_idx_no_pole, parallel%half_lat_end_idx_no_pole
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         tend%fu(i,j) = 0.25 * (coef%cori(j  ) * (iap%u(i,j  ) + iap%u(i-1,j  )) + &
                                coef%cori(j+1) * (iap%u(i,j+1) + iap%u(i-1,j+1)))
       end do
     end do
 
-    ! Avoid non-zero u at Poles, we set fu at Poles explicitly.
+#ifndef NDEBUG
     if (parallel%has_south_pole) then
-      j = parallel%half_lat_south_pole_idx
+      j = parallel%full_lat_south_pole_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        tend%fu(i,j) = 0.25 * coef%cori(j+1) * (iap%u(i,j+1) + iap%u(i-1,j+1))
+        if (iap%u(i,j) /= 0.0) then
+          write(6, *) '[Error]: U at South Pole should be zero!'
+          stop 1
+        end if
       end do
     end if
-
     if (parallel%has_north_pole) then
-      j = parallel%half_lat_north_pole_idx
+      j = parallel%full_lat_north_pole_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        tend%fu(i,j) = 0.25 * coef%cori(j) * (iap%u(i,j) + iap%u(i-1,j))
+        if (iap%u(i,j) /= 0.0) then
+          write(6, *) '[Error]: U at North Pole should be zero!'
+          stop 1
+        end if
       end do
     end if
+#endif
 
   end subroutine coriolis_operator
 
@@ -376,12 +382,16 @@ contains
     type(iap_type), intent(in) :: iap
     type(tend_type), intent(inout) :: tend
 
+    real c1, c2
     integer i, j
 
     do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      c1 = mesh%half_cos_lat(j  ) / mesh%full_cos_lat(j)
+      c2 = mesh%half_cos_lat(j-1) / mesh%full_cos_lat(j)
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
         tend%cv(i,j) = 0.25 * coef%curv(j) * state%u(i,j) * &
-          (iap%v(i,j) + iap%v(i+1,j) + iap%v(i,j-1) + iap%v(i+1,j-1))
+          (c1 * (iap%v(i,j  ) + iap%v(i+1,j  )) + &
+           c2 * (iap%v(i,j-1) + iap%v(i+1,j-1)))
       end do
     end do
 
