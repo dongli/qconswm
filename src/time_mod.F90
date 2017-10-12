@@ -3,7 +3,7 @@ module time_mod
   use datetime_mod
   use timedelta_mod
   use map_mod
-  use params_mod, time_step_size_in => time_step_size, time_units_in => time_units
+  use params_mod, time_step_size_in => time_step_size
 
   implicit none
 
@@ -19,7 +19,6 @@ module time_mod
   public time_step
   public old_time_idx
   public new_time_idx
-  public time_units
 
   type alert_type
     type(timedelta_type) period
@@ -34,7 +33,6 @@ module time_mod
   integer time_step
   integer old_time_idx
   integer new_time_idx
-  character(30) time_units
   character(30) curr_time_format
 
 contains
@@ -50,7 +48,6 @@ contains
     old_time_idx = 1
     new_time_idx = 2
     time_step_size = timedelta(seconds=time_step_size_in)
-    time_units = time_units_in
 
     curr_time = start_time
     curr_time_format = curr_time%isoformat()

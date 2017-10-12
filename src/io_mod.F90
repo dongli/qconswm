@@ -1,8 +1,10 @@
 module io_mod
 
   use netcdf
-  use time_mod
+  use log_mod
   use map_mod
+  use params_mod
+  use time_mod
 
   implicit none
 
@@ -24,6 +26,7 @@ module io_mod
     type(var_type), pointer :: time_var => null()
     type(map_type) dims
     type(map_type) vars
+    real output_time_step_size
   contains
     procedure :: get_dim => get_dim_from_dataset
     procedure :: get_var => get_var_from_dataset
@@ -130,6 +133,13 @@ contains
         dim%units = 'degrees_north'
       case ('time')
         dim%units = time_units
+        if (index(time_units, 'hours') > 0) then
+          dataset%output_time_step_size = time_step_size / 3600.0
+        else if (index(time_units, 'minutes') > 0) then
+          dataset%output_time_step_size = time_step_size / 60.0
+        else
+          call log_error('Invalid time_units "' // trim(time_units) // '" in namelist!')
+        end if
       case default
         dim%units = units
       end select
@@ -277,7 +287,7 @@ contains
 
     ! Write time dimension variable.
     if (associated(dataset%time_var)) then
-      ierr = NF90_PUT_VAR(dataset%id, dataset%time_var%id, time_step)
+      ierr = NF90_PUT_VAR(dataset%id, dataset%time_var%id, time_step * dataset%output_time_step_size)
       if (ierr /= NF90_NOERR) then
         write(6, *) '[Error]: Failed to write variable time!'
         stop 1
