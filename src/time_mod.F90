@@ -2,6 +2,7 @@ module time_mod
 
   use datetime_mod
   use timedelta_mod
+  use map_mod
   use params_mod, time_step_size_in => time_step_size, time_units_in => time_units
 
   implicit none
@@ -11,6 +12,8 @@ module time_mod
   public time_init
   public time_advance
   public time_ended
+  public time_add_alert
+  public time_is_alerted
 
   public curr_time_format
   public time_step
@@ -18,10 +21,16 @@ module time_mod
   public new_time_idx
   public time_units
 
+  type alert_type
+    type(timedelta_type) period
+    type(datetime_type) last_time
+  end type alert_type
+
   type(datetime_type) start_time
   type(datetime_type) end_time
   type(datetime_type) curr_time
   type(timedelta_type) time_step_size
+  type(map_type) alerts
   integer time_step
   integer old_time_idx
   integer new_time_idx
@@ -67,5 +76,58 @@ contains
     res = curr_time > end_time
 
   end function time_ended
+
+  subroutine time_add_alert(name, days, hours, minutes)
+
+    character(*), intent(in) :: name
+    class(*), intent(in), optional :: days
+    class(*), intent(in), optional :: hours
+    class(*), intent(in), optional :: minutes
+
+    type(alert_type) alert
+
+    alert%period = timedelta(days, hours, minutes)
+    alert%last_time = start_time
+    call alerts%insert(name, alert)
+
+  end subroutine time_add_alert
+
+  function time_is_alerted(name) result(res)
+
+    character(*), intent(in) :: name
+    logical res
+
+    type(alert_type), pointer :: alert => null()
+    type(datetime_type) time
+
+    alert => get_alert(name)
+    if (associated(alert)) then
+      time = alert%last_time + alert%period
+      if (time <= curr_time) then
+        alert%last_time = curr_time
+        res = .true.
+      else
+        res = .false.
+      end if
+    else
+      res = .false.
+    end if
+
+  end function time_is_alerted
+
+  function get_alert(name) result(res)
+
+    character(*), intent(in) :: name
+    type(alert_type), pointer :: res
+
+    class(*), pointer :: value
+
+    value => alerts%value(name)
+    select type (value)
+    type is (alert_type)
+      res => value
+    end select
+
+  end function get_alert
 
 end module time_mod

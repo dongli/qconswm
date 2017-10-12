@@ -176,7 +176,7 @@ contains
 
     integer i, j
 
-    if (mod(time_step, 10) /= 0) return
+    if (.not. time_is_alerted('output')) return
 
     ! Convert wind from C grid to A grid.
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx

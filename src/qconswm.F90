@@ -2,6 +2,7 @@ program qconswm
 
   use params_mod
   use io_mod
+  use time_mod
   use dycore_mod
   use rossby_haurwitz_test_mod
 
@@ -17,6 +18,7 @@ program qconswm
   call params_read(namelist_file_path)
 
   call io_create_dataset(desc='Rossby-Haurwitz test', author='Li Dong <dongli@lasg.iap.ac.cn>', file_prefix='rh_test')
+  call time_add_alert('output', hours=1)
 
   call dycore_init()
 
