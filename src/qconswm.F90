@@ -18,7 +18,7 @@ program qconswm
   call params_read(namelist_file_path)
 
   call io_create_dataset(desc='Rossby-Haurwitz test', author='Li Dong <dongli@lasg.iap.ac.cn>', file_prefix='rh_test')
-  call time_add_alert('output', hours=1)
+  call time_add_alert('output', hours=6)
 
   call dycore_init()
 

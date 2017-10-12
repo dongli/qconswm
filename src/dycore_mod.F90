@@ -1,5 +1,6 @@
 module dycore_mod
 
+  use log_mod
   use params_mod, time_scheme_in => time_scheme
   use mesh_mod
   use time_mod
@@ -94,8 +95,7 @@ contains
     case ('leap-frog')
       time_scheme = 3
     case default
-      write(6, *) '[Error]: Unknown time_scheme ' // trim(time_scheme_in) // '!'
-      stop 1
+      call log_error('Unknown time_scheme ' // trim(time_scheme_in) // '!')
     end select
 
     call io_add_dim('lon', size=mesh%num_full_lon)
@@ -106,7 +106,7 @@ contains
     call io_add_var('v', long_name='v wind component', units='m s-1', dim_names=['lon ', 'lat ', 'time'])
     call io_add_var('gd', long_name='geopotential depth', units='m2 s-2', dim_names=['lon ', 'lat ', 'time'])
 
-    write(6, *) '[Notice]: Dycore module is initialized.'
+    call log_notice('Dycore module is initialized.')
 
   end subroutine dycore_init
 
@@ -115,13 +115,17 @@ contains
     call iap_transform(state(old_time_idx), iap(old_time_idx))
 
     call output(state(old_time_idx))
-    write(6, *) '[Notice]: ' // trim(curr_time_format), total_mass(state(old_time_idx)), total_energy(iap(old_time_idx))
+    call log_add_diag('total_mass', total_mass(state(old_time_idx)))
+    call log_add_diag('total_energy', total_energy(iap(old_time_idx)))
+    call log_step()
 
     do while (.not. time_ended())
       call time_integrate()
       call time_advance()
       call output(state(old_time_idx))
-      write(6, *) '[Notice]: ' // trim(curr_time_format), total_mass(state(old_time_idx)), total_energy(iap(old_time_idx))
+      call log_add_diag('total_mass', total_mass(state(old_time_idx)))
+      call log_add_diag('total_energy', total_energy(iap(old_time_idx)))
+      call log_step()
     end do
 
   end subroutine dycore_run
@@ -166,7 +170,7 @@ contains
     end do
     if (allocated(static%ghs)) deallocate(static%ghs)
 
-    write(6, *) '[Notice]: Dycore module is finalized.'
+    call log_notice('Dycore module is finalized.')
 
   end subroutine dycore_final
 
@@ -358,8 +362,7 @@ contains
       j = parallel%full_lat_south_pole_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         if (iap%u(i,j) /= 0.0) then
-          write(6, *) '[Error]: U at South Pole should be zero!'
-          stop 1
+          call log_error('U at South Pole should be zero!')
         end if
       end do
     end if
@@ -367,8 +370,7 @@ contains
       j = parallel%full_lat_north_pole_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         if (iap%u(i,j) /= 0.0) then
-          write(6, *) '[Error]: U at North Pole should be zero!'
-          stop 1
+          call log_error('U at North Pole should be zero!')
         end if
       end do
     end if
@@ -573,6 +575,7 @@ contains
         total_mass = total_mass + mesh%full_cos_lat(j) * mesh%dlon * mesh%dlat * state%gd(i,j)
       end do
     end do
+    total_mass = total_mass * radius**2
 
   end function total_mass
 
@@ -617,7 +620,7 @@ contains
   subroutine predict_correct()
 
     integer old, new
-    real dt
+    real dt, ip1, ip2
 
     old = old_time_idx
     new = new_time_idx
@@ -633,7 +636,11 @@ contains
 
     ! Do correct step.
     call space_operators(state(new), iap(new), tend(new))
-    dt = time_step_size * inner_product(tend(old), tend(new)) / inner_product(tend(new), tend(new))
+    ip1 = inner_product(tend(old), tend(new))
+    ip2 = inner_product(tend(new), tend(new))
+    call log_add_diag('inner_product #1', ip1)
+    call log_add_diag('inner_product #2', ip2)
+    dt = time_step_size * ip1 / ip2
     call update_state(dt, tend(new), state(old), iap(old), state(new), iap(new))
 
   end subroutine predict_correct

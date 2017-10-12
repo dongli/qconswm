@@ -1,5 +1,6 @@
 module mesh_mod
 
+  use log_mod
   use params_mod
 
   implicit none
@@ -85,7 +86,7 @@ contains
     mesh%full_cos_lat(mesh%num_full_lat) = mesh%half_cos_lat(mesh%num_half_lat) * 0.25
     mesh%full_sin_lat(mesh%num_full_lat) = 1.0
 
-    write(6, *) '[Notice]: Mesh module is initialized.'
+    call log_notice('Mesh module is initialized.')
 
   end subroutine mesh_init
 
@@ -102,7 +103,7 @@ contains
     if (allocated(mesh%lon_deg)) deallocate(mesh%lon_deg)
     if (allocated(mesh%lat_deg)) deallocate(mesh%lat_deg)
 
-    write(6, *) '[Notice]: Mesh module is finalized.'
+    call log_notice('Mesh module is finalized.')
 
   end subroutine mesh_final
 

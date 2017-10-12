@@ -116,6 +116,7 @@ module map_mod
     procedure :: size => map_size
     procedure :: empty
     procedure :: clear
+    procedure :: dump
     procedure, private :: copy
     generic :: assignment(=) => copy
     final :: dealloc_map_any
@@ -354,7 +355,7 @@ contains
   end function iter_value
 
   subroutine dump (this)
-    type(map_type), intent(in) :: this
+    class(map_type), intent(in) :: this
     type(list_item), pointer :: item, last, tail
     item => this%first
     if (associated(item)) then

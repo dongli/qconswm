@@ -3,6 +3,7 @@ module parallel_mod
 #ifndef NO_MPI
   use mpi
 #endif
+  use log_mod
   use mesh_mod
 
   implicit none
@@ -91,13 +92,13 @@ contains
     parallel%half_lat_lb = parallel%half_lat_start_idx - parallel%lat_halo_width
     parallel%half_lat_ub = parallel%half_lat_end_idx + parallel%lat_halo_width
 
-    write(6, *) '[Notice]: Parallel module is initialized.'
+    call log_notice('Parallel module is initialized.')
 
   end subroutine parallel_init
 
   subroutine parallel_final()
 
-    write(6, *) '[Notice]: Parallel module is finalized.'
+    call log_notice('Parallel module is finalized.')
 
   end subroutine parallel_final
 
