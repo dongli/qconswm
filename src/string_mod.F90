@@ -5,6 +5,7 @@ module string_mod
   private
 
   public to_string
+  public string_split
 
   interface to_string
     module procedure integer_to_string
@@ -66,5 +67,42 @@ contains
     res = merge('true ', 'false', x)
 
   end function logical_to_string
+
+  function string_split(x, at, delim) result(res)
+
+    character(*), intent(in) :: x
+    integer, intent(in) :: at 
+    character(*), intent(in), optional :: delim
+    character(:), allocatable :: res
+
+    character(:), allocatable :: delim_
+    integer start_pos, end_pos, count
+
+    if (present(delim)) then
+      delim_ = delim
+    else
+      delim_ = ' '
+    end if
+    start_pos = 1
+    end_pos = 1
+    count = 0
+    do
+      end_pos = index(trim(x(start_pos:)), delim_)
+      if (end_pos == 0) then
+        end_pos = len(x) + 1
+        exit
+      end if
+      count = count + 1
+      end_pos = end_pos + start_pos - 1
+      if (count == at) exit
+      start_pos = end_pos + 1
+    end do
+    if (count == 0) then
+      res = ''
+    else
+      res = x(start_pos:end_pos-1)
+    end if
+
+  end function string_split
 
 end module string_mod

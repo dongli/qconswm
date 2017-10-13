@@ -14,13 +14,14 @@ module params_mod
   integer num_lat
   real(8) time_step_size
  
-  integer :: year_range(2) = [0, 0]
-  integer :: month_range(2) = [1, 1]
-  integer :: day_range(2) = [1, 1]
-  integer :: hour_range(2) = [0, 0]
-  integer :: minute_range(2) = [0, 0]
-  integer :: second_range(2) = [0, 0]
-  character(30) time_units
+  integer :: days = 0
+  integer :: hours = 0
+  integer :: minutes = 0
+  integer :: start_time(5) = [0, 0, 0, 0, 0]
+  integer :: end_time(5) = [0, 0, 0, 0, 0]
+  character(30) :: time_units = 'days'
+
+  character(30) :: output_periods(1) = ['6 hours']
 
   ! Options:
   ! - predict-correct
@@ -32,17 +33,16 @@ module params_mod
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
-    year_range, &
-    month_range, &
-    day_range, &
-    hour_range, &
-    month_range, &
-    second_range, &
+    days, &
+    hours, &
+    minutes, &
+    start_time, &
+    end_time, &
     time_units, &
     time_step_size, &
+    output_periods, &
     time_scheme, &
     time_order, &
-    qcon_modified
 
 contains
 

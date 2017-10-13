@@ -1,12 +1,13 @@
 module dycore_mod
 
   use log_mod
-  use params_mod, time_scheme_in => time_scheme
+  use params_mod, time_scheme_in => time_scheme, split_scheme_in => split_scheme
   use mesh_mod
   use time_mod
   use parallel_mod
   use io_mod
   use types_mod
+  use check_mod
 
   implicit none
 
@@ -38,6 +39,7 @@ contains
     call mesh_init()
     call time_init()
     call parallel_init()
+    call io_init()
 
     allocate(coef%cori(mesh%num_full_lat))
     allocate(coef%curv(mesh%num_full_lat))
@@ -180,7 +182,7 @@ contains
 
     integer i, j
 
-    if (.not. time_is_alerted('output')) return
+    if (.not. time_is_alerted('output #1')) return
 
     ! Convert wind from C grid to A grid.
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
@@ -640,7 +642,11 @@ contains
     ip2 = inner_product(tend(new), tend(new))
     call log_add_diag('inner_product #1', ip1)
     call log_add_diag('inner_product #2', ip2)
-    dt = time_step_size * ip1 / ip2
+    if (qcon_modified) then
+      dt = time_step_size * ip1 / ip2
+    else
+      dt = time_step_size
+    end if
     call update_state(dt, tend(new), state(old), iap(old), state(new), iap(new))
 
   end subroutine predict_correct

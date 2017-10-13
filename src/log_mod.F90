@@ -67,7 +67,7 @@ contains
     type(map_iterator_type) iter
     class(*), pointer :: value
 
-    write(6, '(" [Step]: ", A)', advance='no') trim(curr_time_format)
+    write(6, '(" => ", A)', advance='no') trim(curr_time_format)
 
     iter = map_iterator_type(diags)
     do while (.not. iter%at_end())

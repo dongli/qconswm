@@ -3,13 +3,15 @@ module io_mod
   use netcdf
   use log_mod
   use map_mod
-  use params_mod
+  use params_mod, start_time_in => start_time
   use time_mod
+  use string_mod
 
   implicit none
 
   private
 
+  public io_init
   public io_create_dataset
   public io_add_dim
   public io_add_var
@@ -26,7 +28,8 @@ module io_mod
     type(var_type), pointer :: time_var => null()
     type(map_type) dims
     type(map_type) vars
-    real output_time_step_size
+    real output_period
+    integer :: time_step = 0
   contains
     procedure :: get_dim => get_dim_from_dataset
     procedure :: get_var => get_var_from_dataset
@@ -36,7 +39,7 @@ module io_mod
     integer id
     character(30) name
     character(256) long_name
-    character(30) units
+    character(60) units
     integer size
   end type dim_type
 
@@ -48,12 +51,13 @@ module io_mod
     integer id
     character(30) name
     character(256) long_name
-    character(30) units
+    character(60) units
     integer data_type
     type(var_dim_type), allocatable :: dims(:)
   end type var_type
 
   type(map_type) datasets
+  real time_units_in_seconds
 
   interface io_output
     module procedure io_output_real_1d
@@ -61,6 +65,21 @@ module io_mod
   end interface io_output
 
 contains
+
+  subroutine io_init()
+
+    select case (time_units)
+    case ('days')
+      time_units_in_seconds = 86400.0
+    case ('hours')
+      time_units_in_seconds = 3600.0
+    case ('seconds')
+      time_units_in_seconds = 60.0
+    case default
+      call log_error('Invalid time_units ' // trim(time_units) // '!')
+    end select
+
+  end subroutine io_init
 
   subroutine io_create_dataset(name, desc, author, file_prefix)
 
@@ -88,8 +107,26 @@ contains
     dataset%desc = desc
     dataset%author = author
     dataset%file_prefix = file_prefix
+    i = datasets%size() + 1
+    name_ = string_split(output_periods(i), 1)
+    read(name_, *) dataset%output_period 
+    select case (string_split(output_periods(i), 2))
+    case ('days')
+      dataset%output_period = dataset%output_period * 86400
+    case ('hours')
+      dataset%output_period = dataset%output_period * 3600
+    case ('minutes')
+      dataset%output_period = dataset%output_period * 60
+    case ('seconds')
+      dataset%output_period = dataset%output_period
+    case default
+      call log_error('Invalid output period ' // trim(output_periods(i)))
+    end select
 
-    call datasets%insert(name_, dataset)
+    ! Add alert for output.
+    call time_add_alert('output #' // to_string(i), seconds=dataset%output_period)
+
+    call datasets%insert(dataset%name, dataset)
 
   end subroutine io_create_dataset
 
@@ -132,14 +169,7 @@ contains
       case ('lat')
         dim%units = 'degrees_north'
       case ('time')
-        dim%units = time_units
-        if (index(time_units, 'hours') > 0) then
-          dataset%output_time_step_size = time_step_size / 3600.0
-        else if (index(time_units, 'minutes') > 0) then
-          dataset%output_time_step_size = time_step_size / 60.0
-        else
-          call log_error('Invalid time_units "' // trim(time_units) // '" in namelist!')
-        end if
+        write(dim%units, '(A, " since ", A)') trim(time_units), start_time_format
       case default
         dim%units = units
       end select
@@ -287,11 +317,13 @@ contains
 
     ! Write time dimension variable.
     if (associated(dataset%time_var)) then
-      ierr = NF90_PUT_VAR(dataset%id, dataset%time_var%id, time_step * dataset%output_time_step_size)
+      ierr = NF90_PUT_VAR(dataset%id, dataset%time_var%id, &
+        dataset%output_period * dataset%time_step / time_units_in_seconds)
       if (ierr /= NF90_NOERR) then
         write(6, *) '[Error]: Failed to write variable time!'
         stop 1
       end if
+      dataset%time_step = dataset%time_step + 1
     end if
 
   end subroutine io_start_output
