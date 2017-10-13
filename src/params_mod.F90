@@ -30,6 +30,13 @@ module params_mod
   integer time_order ! Time integration order (different schemes will have different meanings)
   logical qcon_modified ! Switch whether quadratic conservation modification is added
 
+  ! Options:
+  ! - csp1
+  ! - csp2
+  ! - isp
+  ! - none
+  character(30) split_scheme
+
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
@@ -43,6 +50,8 @@ module params_mod
     output_periods, &
     time_scheme, &
     time_order, &
+    qcon_modified, &
+    split_scheme
 
 contains
 

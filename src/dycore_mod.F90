@@ -7,7 +7,6 @@ module dycore_mod
   use parallel_mod
   use io_mod
   use types_mod
-  use check_mod
 
   implicit none
 
@@ -23,6 +22,13 @@ module dycore_mod
   ! 2: runge-kutta
   ! 3: leap-frog
   integer time_scheme
+  ! 1: csp1: first order conservative split
+  ! 2: csp2: second order conservative split
+  ! 3: isp: inproved second order conservative split
+  integer split_scheme
+  integer, parameter :: all_pass = 0
+  integer, parameter :: fast_pass = 1
+  integer, parameter :: slow_pass = 2
 
   type(coef_type) coef
   type(state_type) state(2)
@@ -98,6 +104,18 @@ contains
       time_scheme = 3
     case default
       call log_error('Unknown time_scheme ' // trim(time_scheme_in) // '!')
+    end select
+
+    select case (split_scheme_in)
+    case ('csp1')
+      split_scheme = 1
+    case ('csp2')
+      split_scheme = 2
+    case ('isp')
+      split_scheme = 3
+    case default
+      split_scheme = 0
+      call log_notice('No fast-slow split.')
     end select
 
     call io_add_dim('lon', size=mesh%num_full_lon)
