@@ -1,5 +1,5 @@
 &qconswm_params
-days = 32
+days = 70
 num_lon = 80
 num_lat = 41
 time_step_size = 180

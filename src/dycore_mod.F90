@@ -56,12 +56,14 @@ contains
 
     do j = 1, mesh%num_full_lat
       coef%cori(j) = 2.0 * omega * mesh%full_sin_lat(j)
-      coef%curv(j) = mesh%full_sin_lat(j) / mesh%full_cos_lat(j) / radius
+      if (j == 1 .or. j == mesh%num_full_lat) then
+        coef%curv(j) = 0.0
+      else
+        coef%curv(j) = mesh%full_sin_lat(j) / mesh%full_cos_lat(j) / radius
+      end if
       coef%full_dlon(j) = 2.0 * radius * mesh%dlon * mesh%full_cos_lat(j)
       coef%full_dlat(j) = 2.0 * radius * mesh%dlat * mesh%full_cos_lat(j)
     end do
-    coef%curv(1) = 0.0
-    coef%curv(mesh%num_full_lat) = 0.0
 
     do j = 1, mesh%num_half_lat
       coef%half_dlon(j) = 2.0 * radius * mesh%dlon * mesh%half_cos_lat(j)
@@ -132,6 +134,8 @@ contains
 
   subroutine dycore_run()
 
+    call reset_cos_lat_at_poles()
+
     call iap_transform(state(old_time_idx), iap(old_time_idx))
 
     call output(state(old_time_idx))
@@ -193,6 +197,22 @@ contains
     call log_notice('Dycore module is finalized.')
 
   end subroutine dycore_final
+
+  subroutine reset_cos_lat_at_poles()
+
+    integer j
+
+    j = parallel%full_lat_south_pole_idx
+    mesh%full_cos_lat(j) = mesh%half_cos_lat(parallel%half_lat_south_pole_idx) * 0.25
+    coef%full_dlon(j) = 2.0 * radius * mesh%dlon * mesh%full_cos_lat(j)
+    coef%full_dlat(j) = 2.0 * radius * mesh%dlat * mesh%full_cos_lat(j)
+
+    j = parallel%full_lat_north_pole_idx
+    mesh%full_cos_lat(j) = mesh%half_cos_lat(parallel%half_lat_north_pole_idx) * 0.25
+    coef%full_dlon(j) = 2.0 * radius * mesh%dlon * mesh%full_cos_lat(j)
+    coef%full_dlat(j) = 2.0 * radius * mesh%dlat * mesh%full_cos_lat(j)
+
+  end subroutine reset_cos_lat_at_poles
 
   subroutine output(state)
 
