@@ -678,8 +678,7 @@ contains
     call space_operators(state(new), iap(new), tend(new))
     ip1 = inner_product(tend(old), tend(new))
     ip2 = inner_product(tend(new), tend(new))
-    call log_add_diag('inner_product #1', ip1)
-    call log_add_diag('inner_product #2', ip2)
+    call log_add_diag('beta', ip1 / ip2)
     if (qcon_modified) then
       dt = time_step_size * ip1 / ip2
     else
