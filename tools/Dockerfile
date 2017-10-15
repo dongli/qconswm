@@ -8,3 +8,5 @@ RUN cd && git clone https://github.com/dongli/fortran-datetime && \
 RUN cd && git clone https://github.com/dongli/qconswm && \
     cd qconswm/build && cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make
+
+WORKDIR /root/qconswm/build
