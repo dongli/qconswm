@@ -326,6 +326,8 @@ contains
       end do
     end select
 
+    ! call check_antisymmetry(tend, iap)
+
   end subroutine space_operators
 
   subroutine momentum_advection_operator(state, iap, tend)
@@ -728,5 +730,70 @@ contains
   subroutine leap_frog()
 
   end subroutine leap_frog
+
+  subroutine check_antisymmetry(tend, iap)
+
+    type(tend_type), intent(in) :: tend
+    type(iap_type), intent(in) :: iap
+
+    integer i, j
+    real ip_u_adv_lon
+    real ip_u_adv_lat
+    real ip_fv
+    real ip_cv
+    real ip_u_pgf
+    real ip_v_adv_lon
+    real ip_v_adv_lat
+    real ip_fu
+    real ip_cu
+    real ip_v_pgf
+    real ip_mass_div_lon
+    real ip_mass_div_lat
+
+    ip_u_adv_lon = 0.0
+    ip_u_adv_lat = 0.0
+    ip_fv = 0.0
+    ip_cv = 0.0
+    ip_u_pgf = 0.0
+    ip_v_adv_lon = 0.0
+    ip_v_adv_lat = 0.0
+    ip_fu = 0.0
+    ip_cu = 0.0
+    ip_v_pgf = 0.0
+    ip_mass_div_lon = 0.0
+    ip_mass_div_lat = 0.0
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        ip_u_adv_lon = ip_u_adv_lon + tend%u_adv_lon(i,j) * iap%u(i,j) * mesh%full_cos_lat(j)
+        ip_u_adv_lat = ip_u_adv_lat + tend%u_adv_lat(i,j) * iap%u(i,j) * mesh%full_cos_lat(j)
+        ip_fv = ip_fv + tend%fv(i,j) * iap%u(i,j) * mesh%full_cos_lat(j)
+        ip_cv = ip_cv + tend%cv(i,j) * iap%u(i,j) * mesh%full_cos_lat(j)
+        ip_u_pgf = ip_u_pgf + tend%u_pgf(i,j) * iap%u(i,j) * mesh%full_cos_lat(j)
+      end do
+    end do
+
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        ip_v_adv_lon = ip_v_adv_lon + tend%v_adv_lon(i,j) * iap%v(i,j) * mesh%half_cos_lat(j)
+        ip_v_adv_lat = ip_v_adv_lat + tend%v_adv_lat(i,j) * iap%v(i,j) * mesh%half_cos_lat(j)
+        ip_fu = ip_fu + tend%fu(i,j) * iap%v(i,j) * mesh%half_cos_lat(j)
+        ip_cu = ip_cu + tend%cu(i,j) * iap%v(i,j) * mesh%half_cos_lat(j)
+        ip_v_pgf = ip_v_pgf + tend%v_pgf(i,j) * iap%v(i,j) * mesh%half_cos_lat(j)
+      end do
+    end do
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        ip_mass_div_lon = ip_mass_div_lon + tend%mass_div_lon(i,j) * iap%gd(i,j)**2 * mesh%full_cos_lat(j)
+        ip_mass_div_lat = ip_mass_div_lat + tend%mass_div_lat(i,j) * iap%gd(i,j)**2 * mesh%full_cos_lat(j)
+      end do
+    end do
+
+    print *, &
+      ip_u_adv_lon + ip_v_adv_lon + ip_u_pgf + ip_mass_div_lon + ip_fv - ip_fu, &
+      ip_u_adv_lat + ip_v_adv_lat + ip_v_pgf + ip_mass_div_lat + ip_cv - ip_cu
+
+  end subroutine check_antisymmetry
 
 end module dycore_mod
