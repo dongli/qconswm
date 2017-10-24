@@ -12,7 +12,8 @@ module rossby_haurwitz_test_mod
   public rossby_haurwitz_test_set_initial_condition
 
   real, parameter :: R = 4.0
-  real, parameter :: omg = 3.924e-6
+  real, parameter :: omg = 7.848e-6
+  !real, parameter :: omg = 3.924e-6
   real, parameter :: gd0 = 8.0e3 * g
 
 contains

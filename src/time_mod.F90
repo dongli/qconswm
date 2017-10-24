@@ -13,6 +13,7 @@ module time_mod
   private
 
   public time_init
+  public time_swap_indices
   public time_advance
   public time_ended
   public time_add_alert
@@ -70,15 +71,24 @@ contains
 
   end subroutine time_init
 
-  subroutine time_advance()
+  subroutine time_swap_indices(i, j)
+
+    integer, intent(inout) :: i
+    integer, intent(inout) :: j
 
     integer tmp
 
-    tmp = old_time_idx
-    old_time_idx = new_time_idx
-    new_time_idx = tmp
-    time_step = time_step + 1
+    tmp = i
+    i = j
+    j = tmp
 
+  end subroutine time_swap_indices
+
+  subroutine time_advance()
+
+    call time_swap_indices(old_time_idx, new_time_idx)
+
+    time_step = time_step + 1
     curr_time = curr_time + time_step_size
     curr_time_format = curr_time%isoformat()
 

@@ -31,10 +31,10 @@ module dycore_mod
   integer, parameter :: slow_pass = 2
 
   type(coef_type) coef
-  type(state_type) state(2)
+  type(state_type) state(0:2)
   type(static_type) static
-  type(tend_type) tend(2)
-  type(iap_type) iap(2)
+  type(tend_type) tend(0:2)
+  type(iap_type) iap(0:2)
 
 contains
 
@@ -70,7 +70,7 @@ contains
       coef%half_dlat(j) = 2.0 * radius * mesh%dlat * mesh%half_cos_lat(j)
     end do
 
-    do time_idx = 1, 2
+    do time_idx = 0, 2
       call parallel_allocate(state(time_idx)%u, half_lon=.true.)
       call parallel_allocate(state(time_idx)%v, half_lat=.true.)
       call parallel_allocate(state(time_idx)%gd)
@@ -167,7 +167,7 @@ contains
     if (allocated(coef%half_dlon)) deallocate(coef%half_dlon)
     if (allocated(coef%full_dlat)) deallocate(coef%full_dlat)
     if (allocated(coef%half_dlat)) deallocate(coef%half_dlat)
-    do time_idx = 1, 2
+    do time_idx = 0, 2
       if (allocated(state(time_idx)%u)) deallocate(state(time_idx)%u)
       if (allocated(state(time_idx)%v)) deallocate(state(time_idx)%v)
       if (allocated(state(time_idx)%gd)) deallocate(state(time_idx)%gd)
@@ -280,37 +280,96 @@ contains
 
   end subroutine iap_transform
 
-  subroutine space_operators(state, iap, tend)
+  subroutine space_operators(state, iap, tend, pass)
 
     type(state_type), intent(in) :: state
     type(iap_type), intent(in) :: iap
     type(tend_type), intent(inout) :: tend
+    integer, intent(in) :: pass
 
     integer i, j
 
-    call momentum_advection_operator(state, iap, tend)
-    call coriolis_operator(iap, tend)
-    call curvature_operator(state, iap, tend)
-    call pressure_gradient_force_operator(state, iap, tend)
-    call mass_divergence_operator(iap, tend)
+    select case (pass)
+    case (all_pass)
+      call momentum_advection_operator(state, iap, tend)
+      call coriolis_operator(iap, tend)
+      call curvature_operator(state, iap, tend)
+      call pressure_gradient_force_operator(state, iap, tend)
+      call mass_divergence_operator(iap, tend)
 
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        tend%du(i,j) = - tend%u_adv_lon(i,j) - tend%u_adv_lat(i,j) + tend%fv(i,j) + tend%cv(i,j) - tend%u_pgf(i,j)
+      do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+        do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+          tend%du(i,j) = - tend%u_adv_lon(i,j) - tend%u_adv_lat(i,j) + tend%fv(i,j) + tend%cv(i,j) - tend%u_pgf(i,j)
+        end do
       end do
-    end do
 
-    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        tend%dv(i,j) = - tend%v_adv_lon(i,j) - tend%v_adv_lat(i,j) - tend%fu(i,j) - tend%cu(i,j) - tend%v_pgf(i,j)
+      do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          tend%dv(i,j) = - tend%v_adv_lon(i,j) - tend%v_adv_lat(i,j) - tend%fu(i,j) - tend%cu(i,j) - tend%v_pgf(i,j)
+        end do
       end do
-    end do
 
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        tend%dgd(i,j) = - tend%mass_div_lon(i,j) - tend%mass_div_lat(i,j)
+      do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          tend%dgd(i,j) = - tend%mass_div_lon(i,j) - tend%mass_div_lat(i,j)
+        end do
       end do
-    end do
+    case (slow_pass)
+#ifndef NDEBUG
+      tend%fv = 0.0
+      tend%cv = 0.0
+      tend%u_pgf = 0.0
+      tend%fu = 0.0
+      tend%cu = 0.0
+      tend%v_pgf = 0.0
+      tend%mass_div_lon = 0.0
+      tend%mass_div_lat = 0.0
+#endif
+      call momentum_advection_operator(state, iap, tend)
+
+      do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+        do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+          tend%du(i,j) = - tend%u_adv_lon(i,j) - tend%u_adv_lat(i,j)
+        end do
+      end do
+
+      do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          tend%dv(i,j) = - tend%v_adv_lon(i,j) - tend%v_adv_lat(i,j)
+        end do
+      end do
+
+      tend%dgd = 0.0
+    case (fast_pass)
+#ifndef NDEBUG
+      tend%u_adv_lon = 0.0
+      tend%u_adv_lat = 0.0
+      tend%v_adv_lon = 0.0
+      tend%v_adv_lat = 0.0
+#endif
+      call coriolis_operator(iap, tend)
+      call curvature_operator(state, iap, tend)
+      call pressure_gradient_force_operator(state, iap, tend)
+      call mass_divergence_operator(iap, tend)
+
+      do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+        do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+          tend%du(i,j) =    tend%fv(i,j) + tend%cv(i,j) - tend%u_pgf(i,j)
+        end do
+      end do
+
+      do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          tend%dv(i,j) =  - tend%fu(i,j) - tend%cu(i,j) - tend%v_pgf(i,j)
+        end do
+      end do
+
+      do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          tend%dgd(i,j) = - tend%mass_div_lon(i,j) - tend%mass_div_lat(i,j)
+        end do
+      end do
+    end select
 
   end subroutine space_operators
 
@@ -646,44 +705,65 @@ contains
 
   subroutine time_integrate()
 
+    real subcycle_time_step_size
+    integer, parameter :: subcycle_steps = 4
+    integer subcycle, time_idx1, time_idx2
+
+    subcycle_time_step_size = time_step_size / subcycle_steps
+    time_idx1 = 0
+    time_idx2 = new_time_idx
+
     select case (time_scheme)
-    case (1)
-      call predict_correct()
-    case (2)
+    case (1) ! predict-correct
+      select case (split_scheme)
+      case (2) ! csp-2
+        call predict_correct(0.5 * time_step_size, old_time_idx, time_idx1, slow_pass)
+        do subcycle = 1, subcycle_steps
+          call predict_correct(subcycle_time_step_size, time_idx1, time_idx2, fast_pass)
+          call time_swap_indices(time_idx1, time_idx2)
+        end do
+        call predict_correct(0.5 * time_step_size, time_idx1, new_time_idx, slow_pass)
+      case default
+        call predict_correct(time_step_size)
+      end select
+    case (2) ! runge-kutta
       call runge_kutta()
-    case (3)
+    case (3) ! leap-frog
       call leap_frog()
     end select
 
   end subroutine time_integrate
 
-  subroutine predict_correct()
+  subroutine predict_correct(time_step_size, old_time_idx_, new_time_idx_, pass_)
 
-    integer old, new
+    real, intent(in) :: time_step_size
+    integer, intent(in), optional :: old_time_idx_
+    integer, intent(in), optional :: new_time_idx_
+    integer, intent(in), optional :: pass_
+
+    integer old, new, pass
     real dt, ip1, ip2
 
-    old = old_time_idx
-    new = new_time_idx
+    old = merge(old_time_idx_, old_time_idx, present(old_time_idx_))
+    new = merge(new_time_idx_, new_time_idx, present(new_time_idx_))
+    pass = merge(pass_, all_pass, present(pass_))
+
     dt = time_step_size * 0.5
 
     ! Do first predict step.
-    call space_operators(state(old), iap(old), tend(old))
+    call space_operators(state(old), iap(old), tend(old), pass)
     call update_state(dt, tend(old), state(old), iap(old), state(new), iap(new))
 
     ! Do second predict step.
-    call space_operators(state(new), iap(new), tend(old))
+    call space_operators(state(new), iap(new), tend(old), pass)
     call update_state(dt, tend(old), state(old), iap(old), state(new), iap(new))
 
     ! Do correct step.
-    call space_operators(state(new), iap(new), tend(new))
+    call space_operators(state(new), iap(new), tend(new), pass)
     ip1 = inner_product(tend(old), tend(new))
     ip2 = inner_product(tend(new), tend(new))
     call log_add_diag('beta', ip1 / ip2)
-    if (qcon_modified) then
-      dt = time_step_size * ip1 / ip2
-    else
-      dt = time_step_size
-    end if
+    dt = time_step_size * merge(ip1 / ip2, 1.0, qcon_modified)
     call update_state(dt, tend(new), state(old), iap(old), state(new), iap(new))
 
   end subroutine predict_correct
