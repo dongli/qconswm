@@ -1,5 +1,6 @@
 module dycore_mod
 
+  use ieee_arithmetic
   use log_mod
   use params_mod, time_scheme_in => time_scheme, split_scheme_in => split_scheme
   use mesh_mod
@@ -633,6 +634,10 @@ contains
     end do
     total_mass = total_mass * radius**2
 
+    if (ieee_is_nan(total_mass)) then
+      call log_error('Total mass is NaN!')
+    end if
+
   end function total_mass
 
   real function total_energy(iap)
@@ -657,6 +662,10 @@ contains
         total_energy = total_energy + (iap%gd(i,j)**2 + static%ghs(i,j))**2 * mesh%full_cos_lat(j)
       end do
     end do
+
+    if (ieee_is_nan(total_energy)) then
+      call log_error('Total energy is NaN!')
+    end if
 
   end function total_energy
 
