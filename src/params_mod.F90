@@ -12,6 +12,7 @@ module params_mod
 
   integer num_lon
   integer num_lat
+  integer :: subcycles = 4
   real(8) time_step_size
  
   integer :: days = 0
@@ -40,6 +41,7 @@ module params_mod
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
+    subcycles, &
     days, &
     hours, &
     minutes, &

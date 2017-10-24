@@ -706,10 +706,9 @@ contains
   subroutine time_integrate()
 
     real subcycle_time_step_size
-    integer, parameter :: subcycle_steps = 4
     integer subcycle, time_idx1, time_idx2
 
-    subcycle_time_step_size = time_step_size / subcycle_steps
+    subcycle_time_step_size = time_step_size / subcycles
     time_idx1 = 0
     time_idx2 = new_time_idx
 
@@ -718,7 +717,7 @@ contains
       select case (split_scheme)
       case (2) ! csp-2
         call predict_correct(0.5 * time_step_size, old_time_idx, time_idx1, slow_pass)
-        do subcycle = 1, subcycle_steps
+        do subcycle = 1, subcycles
           call predict_correct(subcycle_time_step_size, time_idx1, time_idx2, fast_pass)
           call time_swap_indices(time_idx1, time_idx2)
         end do
