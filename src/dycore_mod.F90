@@ -31,10 +31,12 @@ module dycore_mod
   integer, parameter :: slow_pass = 2
 
   type(coef_type) coef
-  type(state_type) state(0:2)
+  type(state_type) state(-1:2)
   type(static_type) static
+  type(iap_type) iap(-1:2)
   type(tend_type) tend(0:2)
-  type(iap_type) iap(0:2)
+
+  integer, parameter :: half_time_idx = -1
 
 contains
 
@@ -47,13 +49,7 @@ contains
     call parallel_init()
     call io_init()
 
-    allocate(coef%cori(mesh%num_full_lat))
-    allocate(coef%curv(mesh%num_full_lat))
-    allocate(coef%full_dlon(mesh%num_full_lat))
-    allocate(coef%half_dlon(mesh%num_half_lat))
-    allocate(coef%full_dlat(mesh%num_full_lat))
-    allocate(coef%half_dlat(mesh%num_half_lat))
-
+    call allocate_data(coef)
     do j = 1, mesh%num_full_lat
       coef%cori(j) = 2.0 * omega * mesh%full_sin_lat(j)
       if (j == 1 .or. j == mesh%num_full_lat) then
@@ -70,32 +66,14 @@ contains
       coef%half_dlat(j) = 2.0 * radius * mesh%dlat * mesh%half_cos_lat(j)
     end do
 
-    do time_idx = 0, 2
-      call parallel_allocate(state(time_idx)%u, half_lon=.true.)
-      call parallel_allocate(state(time_idx)%v, half_lat=.true.)
-      call parallel_allocate(state(time_idx)%gd)
-      call parallel_allocate(state(time_idx)%ua)
-      call parallel_allocate(state(time_idx)%va)
-      call parallel_allocate(tend(time_idx)%u_adv_lon, half_lon=.true.)
-      call parallel_allocate(tend(time_idx)%u_adv_lat, half_lon=.true.)
-      call parallel_allocate(tend(time_idx)%fv, half_lon=.true.)
-      call parallel_allocate(tend(time_idx)%cv, half_lon=.true.)
-      call parallel_allocate(tend(time_idx)%u_pgf, half_lon=.true.)
-      call parallel_allocate(tend(time_idx)%v_adv_lon, half_lat=.true.)
-      call parallel_allocate(tend(time_idx)%v_adv_lat, half_lat=.true.)
-      call parallel_allocate(tend(time_idx)%fu, half_lat=.true.)
-      call parallel_allocate(tend(time_idx)%cu, half_lat=.true.)
-      call parallel_allocate(tend(time_idx)%v_pgf, half_lat=.true.)
-      call parallel_allocate(tend(time_idx)%mass_div_lon)
-      call parallel_allocate(tend(time_idx)%mass_div_lat)
-      call parallel_allocate(tend(time_idx)%du, half_lon=.true.)
-      call parallel_allocate(tend(time_idx)%dv, half_lat=.true.)
-      call parallel_allocate(tend(time_idx)%dgd)
-      call parallel_allocate(iap(time_idx)%u, half_lon=.true.)
-      call parallel_allocate(iap(time_idx)%v, half_lat=.true.)
-      call parallel_allocate(iap(time_idx)%gd)
+    do time_idx = -1, 2
+      call allocate_data(state(time_idx))
+      call allocate_data(iap(time_idx))
     end do
-    call parallel_allocate(static%ghs)
+    do time_idx = 0, 2
+      call allocate_data(tend(time_idx))
+    end do
+    call allocate_data(static)
 
     select case (time_scheme_in)
     case ('predict-correct')
@@ -161,38 +139,15 @@ contains
     call mesh_final()
     call parallel_final()
 
-    if (allocated(coef%cori)) deallocate(coef%cori)
-    if (allocated(coef%curv)) deallocate(coef%curv)
-    if (allocated(coef%full_dlon)) deallocate(coef%full_dlon)
-    if (allocated(coef%half_dlon)) deallocate(coef%half_dlon)
-    if (allocated(coef%full_dlat)) deallocate(coef%full_dlat)
-    if (allocated(coef%half_dlat)) deallocate(coef%half_dlat)
-    do time_idx = 0, 2
-      if (allocated(state(time_idx)%u)) deallocate(state(time_idx)%u)
-      if (allocated(state(time_idx)%v)) deallocate(state(time_idx)%v)
-      if (allocated(state(time_idx)%gd)) deallocate(state(time_idx)%gd)
-      if (allocated(state(time_idx)%ua)) deallocate(state(time_idx)%ua)
-      if (allocated(state(time_idx)%va)) deallocate(state(time_idx)%va)
-      if (allocated(tend(time_idx)%u_adv_lon)) deallocate(tend(time_idx)%u_adv_lon)
-      if (allocated(tend(time_idx)%u_adv_lat)) deallocate(tend(time_idx)%u_adv_lat)
-      if (allocated(tend(time_idx)%v_adv_lon)) deallocate(tend(time_idx)%v_adv_lon)
-      if (allocated(tend(time_idx)%v_adv_lat)) deallocate(tend(time_idx)%v_adv_lat)
-      if (allocated(tend(time_idx)%fu)) deallocate(tend(time_idx)%fu)
-      if (allocated(tend(time_idx)%fv)) deallocate(tend(time_idx)%fv)
-      if (allocated(tend(time_idx)%cu)) deallocate(tend(time_idx)%cu)
-      if (allocated(tend(time_idx)%cv)) deallocate(tend(time_idx)%cv)
-      if (allocated(tend(time_idx)%u_pgf)) deallocate(tend(time_idx)%u_pgf)
-      if (allocated(tend(time_idx)%v_pgf)) deallocate(tend(time_idx)%v_pgf)
-      if (allocated(tend(time_idx)%mass_div_lon)) deallocate(tend(time_idx)%mass_div_lon)
-      if (allocated(tend(time_idx)%mass_div_lat)) deallocate(tend(time_idx)%mass_div_lat)
-      if (allocated(tend(time_idx)%du)) deallocate(tend(time_idx)%du)
-      if (allocated(tend(time_idx)%dv)) deallocate(tend(time_idx)%dv)
-      if (allocated(tend(time_idx)%dgd)) deallocate(tend(time_idx)%dgd)
-      if (allocated(iap(time_idx)%u)) deallocate(iap(time_idx)%u)
-      if (allocated(iap(time_idx)%v)) deallocate(iap(time_idx)%v)
-      if (allocated(iap(time_idx)%gd)) deallocate(iap(time_idx)%gd)
+    call deallocate_data(coef)
+    do time_idx = -1, 2
+      call deallocate_data(state(time_idx))
+      call deallocate_data(iap(time_idx))
     end do
-    if (allocated(static%ghs)) deallocate(static%ghs)
+    do time_idx = 0, 2
+      call deallocate_data(tend(time_idx))
+    end do
+    call deallocate_data(static)
 
     call log_notice('Dycore module is finalized.')
 
@@ -746,7 +701,6 @@ contains
     old = merge(old_time_idx_, old_time_idx, present(old_time_idx_))
     new = merge(new_time_idx_, new_time_idx, present(new_time_idx_))
     pass = merge(pass_, all_pass, present(pass_))
-
     dt = time_step_size * 0.5
 
     ! Do first predict step.
