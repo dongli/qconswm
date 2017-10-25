@@ -119,6 +119,8 @@ contains
       dataset%output_period = dataset%output_period * 60
     case ('seconds')
       dataset%output_period = dataset%output_period
+    case ('steps')
+      dataset%output_period = dataset%output_period * time_step_size
     case default
       call log_error('Invalid output period ' // trim(output_periods(i)))
     end select
