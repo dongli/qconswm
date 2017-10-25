@@ -19,9 +19,10 @@ module dycore_mod
   public state
   public static
 
-  ! 1: predict-correct
-  ! 2: runge-kutta
-  ! 3: leap-frog
+  ! 1: predict_correct
+  ! 2: runge_kutta
+  ! 3: leap_frog
+  ! 4: middle_point
   integer time_scheme
   ! 1: csp1: first order conservative split
   ! 2: csp2: second order conservative split
@@ -77,12 +78,14 @@ contains
     call allocate_data(static)
 
     select case (time_scheme_in)
-    case ('predict-correct')
+    case ('predict_correct')
       time_scheme = 1
-    case ('runge-kutta')
+    case ('runge_kutta')
       time_scheme = 2
-    case ('leap-frog')
+    case ('leap_frog')
       time_scheme = 3
+    case ('middle_point')
+      time_scheme = 4
     case default
       call log_error('Unknown time_scheme ' // trim(time_scheme_in) // '!')
     end select
@@ -679,9 +682,9 @@ contains
     time_idx2 = new_time_idx
 
     select case (time_scheme)
-    case (1) ! predict-correct
+    case (1) ! predict_correct
       select case (split_scheme)
-      case (2) ! csp-2
+      case (2) ! csp2
         call predict_correct(0.5 * time_step_size, old_time_idx, time_idx1, slow_pass)
         do subcycle = 1, subcycles
           call predict_correct(subcycle_time_step_size, time_idx1, time_idx2, fast_pass)
@@ -691,10 +694,12 @@ contains
       case default
         call predict_correct(time_step_size)
       end select
-    case (2) ! runge-kutta
+    case (2) ! runge_kutta
       call runge_kutta()
-    case (3) ! leap-frog
+    case (3) ! leap_frog
       call leap_frog()
+    case (4) ! middle_point
+      call middle_point(time_step_size)
     end select
 
   end subroutine time_integrate

@@ -4,9 +4,8 @@ num_lon = 80
 num_lat = 41
 time_step_size = 960
 output_periods = '1 days'
-time_scheme = 'predict-correct' ! or 'runge-kutta' or 'leap-frog'
+time_scheme = 'predict_correct'
 qcon_modified = .true.
-time_order = 2
 split_scheme = 'csp2' ! or 'csp1' or 'isp'
 subcycles = 8
 /

@@ -9,6 +9,8 @@ module types_mod
 
   public allocate_data
   public deallocate_data
+  public copy_state
+  public average_state
   public coef_type
   public state_type
   public static_type
@@ -226,5 +228,71 @@ contains
     if (allocated(tend%dgd)) deallocate(tend%dgd)
 
   end subroutine deallocate_tend_data
+
+  subroutine copy_state(state1, iap1, state2, iap2)
+
+    type(state_type), intent(in) :: state1
+    type(iap_type), intent(in) :: iap1
+    type(state_type), intent(inout) :: state2
+    type(iap_type), intent(inout) :: iap2
+
+    integer i, j
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        state2%u(i,j) = state1%u(i,j)
+        iap2%u(i,j) = iap1%u(i,j)
+      end do
+    end do
+
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state2%v(i,j) = state1%v(i,j)
+        iap2%v(i,j) = iap1%v(i,j)
+      end do
+    end do
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state2%gd(i,j) = state1%gd(i,j)
+        iap2%gd(i,j) = iap1%gd(i,j)
+      end do
+    end do
+
+  end subroutine copy_state
+
+  subroutine average_state(state1, iap1, state2, iap2, state3, iap3)
+
+    type(state_type), intent(in) :: state1
+    type(iap_type), intent(in) :: iap1
+    type(state_type), intent(in) :: state2
+    type(iap_type), intent(in) :: iap2
+    type(state_type), intent(inout) :: state3
+    type(iap_type), intent(inout) :: iap3
+
+    integer i, j
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
+        state3%u(i,j) = (state1%u(i,j) + state2%u(i,j)) * 0.5
+        iap3%u(i,j) = (iap1%u(i,j) + iap2%u(i,j)) * 0.5
+      end do
+    end do
+
+    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state3%v(i,j) = (state1%v(i,j) + state2%v(i,j)) * 0.5
+        iap3%v(i,j) = (iap1%v(i,j) + iap2%v(i,j)) * 0.5
+      end do
+    end do
+
+    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state3%gd(i,j) = (state1%gd(i,j) + state2%gd(i,j)) * 0.5
+        iap3%gd(i,j) = (iap1%gd(i,j) + iap2%gd(i,j)) * 0.5
+      end do
+    end do
+
+  end subroutine average_state
 
 end module types_mod

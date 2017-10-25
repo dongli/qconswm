@@ -9,7 +9,7 @@ else ()
   set (CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
 endif ()
 
-set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8")
+set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -ffpe-summary=none")
 
 find_package (PkgConfig)
 if (${PKG_CONFIG_FOUND})
