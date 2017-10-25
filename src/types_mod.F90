@@ -208,28 +208,12 @@ contains
     type(state_type), intent(in) :: state1
     type(state_type), intent(inout) :: state2
 
-    integer i, j
-
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        state2%u(i,j) = state1%u(i,j)
-        state2%iap%u(i,j) = state1%iap%u(i,j)
-      end do
-    end do
-
-    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        state2%v(i,j) = state1%v(i,j)
-        state2%iap%v(i,j) = state1%iap%v(i,j)
-      end do
-    end do
-
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        state2%gd(i,j) = state1%gd(i,j)
-        state2%iap%gd(i,j) = state1%iap%gd(i,j)
-      end do
-    end do
+    state2%u = state1%u
+    state2%iap%u = state1%iap%u
+    state2%v = state1%v
+    state2%iap%v = state1%iap%v
+    state2%gd = state1%gd
+    state2%iap%gd = state1%iap%gd
 
   end subroutine copy_state
 
@@ -239,28 +223,12 @@ contains
     type(state_type), intent(in) :: state2
     type(state_type), intent(inout) :: state3
 
-    integer i, j
-
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        state3%u(i,j) = (state1%u(i,j) + state2%u(i,j)) * 0.5
-        state3%iap%u(i,j) = (state1%iap%u(i,j) + state2%iap%u(i,j)) * 0.5
-      end do
-    end do
-
-    do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        state3%v(i,j) = (state1%v(i,j) + state2%v(i,j)) * 0.5
-        state3%iap%v(i,j) = (state1%iap%v(i,j) + state2%iap%v(i,j)) * 0.5
-      end do
-    end do
-
-    do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        state3%gd(i,j) = (state1%gd(i,j) + state2%gd(i,j)) * 0.5
-        state3%iap%gd(i,j) = (state1%iap%gd(i,j) + state2%iap%gd(i,j)) * 0.5
-      end do
-    end do
+    state3%u = (state1%u + state2%u) * 0.5
+    state3%iap%u = (state1%iap%u + state2%iap%u) * 0.5
+    state3%v = (state1%v + state2%v) * 0.5
+    state3%iap%v = (state1%iap%v + state2%iap%v) * 0.5
+    state3%gd = (state1%gd + state2%gd) * 0.5
+    state3%iap%gd = (state1%iap%gd + state2%iap%gd) * 0.5
 
   end subroutine average_state
 
