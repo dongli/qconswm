@@ -694,6 +694,37 @@ contains
 
   end subroutine time_integrate
 
+  subroutine middle_point(time_step_size, old_time_idx_, new_time_idx_, pass_)
+
+    real, intent(in) :: time_step_size
+    integer, intent(in), optional :: old_time_idx_
+    integer, intent(in), optional :: new_time_idx_
+    integer, intent(in), optional :: pass_
+
+    integer old, new, half, pass, iteration
+    real dt, e1, e2
+
+    old = merge(old_time_idx_, old_time_idx, present(old_time_idx_))
+    new = merge(new_time_idx_, new_time_idx, present(new_time_idx_))
+    half = half_time_idx
+    pass = merge(pass_, all_pass, present(pass_))
+    dt = time_step_size
+
+    call copy_state(state(old), state(new))
+
+    e1 = total_energy(state(old))
+    do iteration = 1, 8
+      call average_state(state(old), state(new), state(half))
+      call space_operators(state(half), tend(old), pass)
+      call update_state(dt, tend(old), state(old), state(new))
+      e2 = total_energy(state(new))
+      if (abs(e2 - e1) * 2 / (e2 + e1) < 5.0e-15) then
+        exit
+      end if
+    end do
+
+  end subroutine middle_point
+
   subroutine predict_correct(time_step_size, old_time_idx_, new_time_idx_, pass_)
 
     real, intent(in) :: time_step_size
