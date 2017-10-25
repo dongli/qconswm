@@ -30,10 +30,18 @@ module types_mod
     real, allocatable :: half_dlat(:)
   end type coef_type
 
+  ! IAP transformed variables
+  type iap_type
+    real, allocatable :: u(:,:)
+    real, allocatable :: v(:,:)
+    real, allocatable :: gd(:,:)
+  end type iap_type
+
   type state_type
     real, allocatable :: u(:,:)
     real, allocatable :: v(:,:)
     real, allocatable :: gd(:,:) ! Geopotential depth
+    type(iap_type) iap
     ! Wind on A grid
     real, allocatable :: ua(:,:)
     real, allocatable :: va(:,:)
@@ -59,33 +67,12 @@ module types_mod
     real, allocatable :: du(:,:)
     real, allocatable :: dv(:,:)
     real, allocatable :: dgd(:,:)
-
-    real, allocatable :: a_u_adv_lon(:,:)
-    real, allocatable :: a_u_adv_lat(:,:)
-    real, allocatable :: a_v_adv_lon(:,:)
-    real, allocatable :: a_v_adv_lat(:,:)
-    real, allocatable :: a_fu(:,:)
-    real, allocatable :: a_fv(:,:)
-    real, allocatable :: a_cu(:,:)
-    real, allocatable :: a_cv(:,:)
-    real, allocatable :: a_u_pgf(:,:)
-    real, allocatable :: a_v_pgf(:,:)
-    real, allocatable :: a_du(:,:)
-    real, allocatable :: a_dv(:,:)
   end type tend_type
-
-  ! IAP transformed variables
-  type iap_type
-    real, allocatable :: u(:,:)
-    real, allocatable :: v(:,:)
-    real, allocatable :: gd(:,:)
-  end type iap_type
 
   interface allocate_data
     module procedure allocate_coef_data
     module procedure allocate_static_data
     module procedure allocate_state_data
-    module procedure allocate_iap_data
     module procedure allocate_tend_data
   end interface allocate_data
 
@@ -93,7 +80,6 @@ module types_mod
     module procedure deallocate_coef_data
     module procedure deallocate_static_data
     module procedure deallocate_state_data
-    module procedure deallocate_iap_data
     module procedure deallocate_tend_data
   end interface deallocate_data
 
@@ -130,17 +116,11 @@ contains
     if (.not. allocated(state%ua)) call parallel_allocate(state%ua)
     if (.not. allocated(state%va)) call parallel_allocate(state%va)
 
+    if (.not. allocated(state%iap%u)) call parallel_allocate(state%iap%u, half_lon=.true.)
+    if (.not. allocated(state%iap%v)) call parallel_allocate(state%iap%v, half_lat=.true.)
+    if (.not. allocated(state%iap%gd)) call parallel_allocate(state%iap%gd)
+
   end subroutine allocate_state_data
-
-  subroutine allocate_iap_data(iap)
-
-    type(iap_type), intent(out) :: iap
-
-    if (.not. allocated(iap%u)) call parallel_allocate(iap%u, half_lon=.true.)
-    if (.not. allocated(iap%v)) call parallel_allocate(iap%v, half_lat=.true.)
-    if (.not. allocated(iap%gd)) call parallel_allocate(iap%gd)
-
-  end subroutine allocate_iap_data
 
   subroutine allocate_tend_data(tend)
 
@@ -195,17 +175,11 @@ contains
     if (allocated(state%ua)) deallocate(state%ua)
     if (allocated(state%va)) deallocate(state%va)
 
+    if (allocated(state%iap%u)) deallocate(state%iap%u)
+    if (allocated(state%iap%v)) deallocate(state%iap%v)
+    if (allocated(state%iap%gd)) deallocate(state%iap%gd)
+
   end subroutine deallocate_state_data
-
-  subroutine deallocate_iap_data(iap)
-
-    type(iap_type), intent(inout) :: iap
-
-    if (allocated(iap%u)) deallocate(iap%u)
-    if (allocated(iap%v)) deallocate(iap%v)
-    if (allocated(iap%gd)) deallocate(iap%gd)
-
-  end subroutine deallocate_iap_data
 
   subroutine deallocate_tend_data(tend)
 
@@ -229,67 +203,62 @@ contains
 
   end subroutine deallocate_tend_data
 
-  subroutine copy_state(state1, iap1, state2, iap2)
+  subroutine copy_state(state1, state2)
 
     type(state_type), intent(in) :: state1
-    type(iap_type), intent(in) :: iap1
     type(state_type), intent(inout) :: state2
-    type(iap_type), intent(inout) :: iap2
 
     integer i, j
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
         state2%u(i,j) = state1%u(i,j)
-        iap2%u(i,j) = iap1%u(i,j)
+        state2%iap%u(i,j) = state1%iap%u(i,j)
       end do
     end do
 
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         state2%v(i,j) = state1%v(i,j)
-        iap2%v(i,j) = iap1%v(i,j)
+        state2%iap%v(i,j) = state1%iap%v(i,j)
       end do
     end do
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         state2%gd(i,j) = state1%gd(i,j)
-        iap2%gd(i,j) = iap1%gd(i,j)
+        state2%iap%gd(i,j) = state1%iap%gd(i,j)
       end do
     end do
 
   end subroutine copy_state
 
-  subroutine average_state(state1, iap1, state2, iap2, state3, iap3)
+  subroutine average_state(state1, state2, state3)
 
     type(state_type), intent(in) :: state1
-    type(iap_type), intent(in) :: iap1
     type(state_type), intent(in) :: state2
-    type(iap_type), intent(in) :: iap2
     type(state_type), intent(inout) :: state3
-    type(iap_type), intent(inout) :: iap3
 
     integer i, j
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
         state3%u(i,j) = (state1%u(i,j) + state2%u(i,j)) * 0.5
-        iap3%u(i,j) = (iap1%u(i,j) + iap2%u(i,j)) * 0.5
+        state3%iap%u(i,j) = (state1%iap%u(i,j) + state2%iap%u(i,j)) * 0.5
       end do
     end do
 
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         state3%v(i,j) = (state1%v(i,j) + state2%v(i,j)) * 0.5
-        iap3%v(i,j) = (iap1%v(i,j) + iap2%v(i,j)) * 0.5
+        state3%iap%v(i,j) = (state1%iap%v(i,j) + state2%iap%v(i,j)) * 0.5
       end do
     end do
 
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
       do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         state3%gd(i,j) = (state1%gd(i,j) + state2%gd(i,j)) * 0.5
-        iap3%gd(i,j) = (iap1%gd(i,j) + iap2%gd(i,j)) * 0.5
+        state3%iap%gd(i,j) = (state1%iap%gd(i,j) + state2%iap%gd(i,j)) * 0.5
       end do
     end do
 
