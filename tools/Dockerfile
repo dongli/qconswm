@@ -6,7 +6,7 @@ RUN cd && git clone https://github.com/dongli/fortran-datetime && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && make && make install && \
     cd && rm -rf fortran-datetime
 RUN cd && git clone https://github.com/dongli/qconswm && \
-    cd qconswm/build && cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make
+    mkdir qconswm/build && cd qconswm/build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && make
 
 WORKDIR /root/qconswm/build

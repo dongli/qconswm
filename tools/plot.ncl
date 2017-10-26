@@ -26,8 +26,8 @@ res_gd = res
 res_gd@cnLineLabelsOn = False
 res_gd@cnLevelSelectionMode = "ManualLevels"
 res_gd@cnMinLevelValF = 7.5e4
-res_gd@cnMaxLevelValF = 9.5e4
-res_gd@cnLevelSpacingF = 0.1e4
+res_gd@cnMaxLevelValF = 10.5e4
+res_gd@cnLevelSpacingF = 0.2e4
 res_gd@gsnPolar = "NH"
 
 res_u = res
