@@ -17,10 +17,10 @@ predict-correct time integrator, etc. More options will be added soon.
 
 | Time integrator | Order | Implicit | Available |
 |-----------------|-------|----------|-----------|
-| predict-correct | 2nd   | No       | Yes       |
 | middle-point    | 2nd   | Yes      | Yes       |
-| runge-kutta     | xxx   | Yes      | Not yet   |
-| leap-frog       | 3rd   | Yes      | Not yet   |
+| predict-correct | 2nd   | No       | Yes       |
+| runge-kutta     | xxx   | No       | Not yet   |
+| leap-frog       | 3rd   | No       | Not yet   |
 
 Authors
 =======
