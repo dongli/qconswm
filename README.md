@@ -13,7 +13,14 @@ computing can be ensured which is key to climate simulation.
 
 Currently, the implemention contains Arakawa C grid, second-order spatial
 difference satisfying antisymmetric condition, and second-order
-prediction-correction time integrator. More options will be added soon.
+predict-correct time integrator, etc. More options will be added soon.
+
+| Time integrator | Order | Implicit | Available |
+|-----------------|-------|----------|-----------|
+| predict-correct | 2nd   | No       | Yes       |
+| middle-point    | 2nd   | Yes      | Yes       |
+| runge-kutta     | xxx   | Yes      | Not yet   |
+| leap-frog       | 3rd   | Yes      | Not yet   |
 
 Authors
 =======
