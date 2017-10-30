@@ -22,6 +22,8 @@ predict-correct time integrator, etc. More options will be added soon.
 | runge-kutta     | xxx   | No       | Not yet   |
 | leap-frog       | 3rd   | No       | Not yet   |
 
+![rh_test](http://7xvqi7.com1.z0.glb.clouddn.com/rh_test.gif "Rossby-Haurwitz four wave test case result")
+
 Authors
 =======
 
