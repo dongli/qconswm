@@ -5,21 +5,32 @@
 \usepackage{xcolor}
 \usepackage{hyperref}
 
-\title{基于平方守恒的全球浅水模型}
+\title{球面C网格平方守恒正压模型程序设计}
 \date{2017年9月21日}
 
 \begin{document}
 
 \maketitle
 
+\begin{abstract}
+  本讲义详细介绍如何构建一个C网格下的基于平方守恒有限差分方案的正压模型程序实现。该模型采用等间距经纬网格，对预报量进行了IAP变换，以便于保证离散算子的反对称性，空间差分采用中央差，时间积分采用了预估-校正算法，并使用了显式平方守恒改造以保证总能量守恒。另外模型还可以采用快慢过程分裂，使得慢过程使用长时间步长，快过程使用短时间步长，以提高计算效率。
+\end{abstract}
+
 \section{出发方程}
 
+球面正压偏微分方程组为
+\begin{align}
+  \frac{\partial u}{\partial t} & = - \frac{u}{a \cos{\varphi}} \frac{\partial u}{\partial \lambda} - \frac{v}{a} \frac{\partial u}{\partial \varphi} + f v + \frac{a \tan{\varphi}}{a} v - \frac{1}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
+  \frac{\partial v}{\partial t} & = - \frac{u}{a \cos{\varphi}} \frac{\partial v}{\partial \lambda} - \frac{v}{a} \frac{\partial v}{\partial \varphi} - f u - \frac{a \tan{\varphi}}{a} u - \frac{1}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
+  \frac{\partial \phi}{\partial t} & = - \frac{1}{a \cos{\varphi}} \left( \frac{\partial u \phi}{\partial \lambda} + \frac{\partial v \cos{\varphi} \phi}{\partial \varphi} \right)
+\end{align}
+其中$\varphi$是位势厚度，$\varphi_s$是地表位势抬升，$a$是球面半径，$\lambda$是经度，$\phi$是纬度。为了便于离散方案保证算子的反对称性，对上述方程组进行IAP变换$H = \sqrt{\varphi}$，$U = H u$，$V = H v$。
 \begin{align}
 	\frac{\partial U}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) + f V + \frac{u \tan{\varphi}}{a} V - \frac{H}{a \cos{\varphi}} \frac{\partial \phi + \phi_s}{\partial \lambda} \\
   \frac{\partial V}{\partial t} & = - \frac{1}{2 a \cos{\varphi}} \left( 2 \frac{\partial u V}{\partial \lambda} - V \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} V}{\partial \varphi} - V \frac{\partial v \cos{\varphi}}{\partial \varphi} \right) - f U - \frac{u \tan{\varphi}}{a} U - \frac{H}{a} \frac{\partial \phi + \phi_s}{\partial \varphi} \\
   \frac{\partial \phi}{\partial t} & = - \frac{1}{a \cos{\varphi}} \left( \frac{\partial H U}{\partial \lambda} + \frac{\partial H V \cos{\varphi}}{\partial \varphi} \right)
 \end{align}
-其中$\varphi$是位势厚度，$\varphi_s$是地表位势抬升，$H = \sqrt{\varphi}$，$U = H u$，$V = H v$，$a$是球面半径，$\lambda$是经度，$\phi$是纬度。注意前两式中的平流项采用的是
+注意前两式中的平流项采用的是
 \begin{align}
   2 \frac{\partial u \cdot}{\partial \lambda} - \cdot \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} - \cdot \frac{\partial v \cos{\varphi}}{\partial \varphi}
 \end{align}
@@ -27,7 +38,7 @@
 \begin{align}
   \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi}
 \end{align}
-这是由于虽然两式在连续情形下等价，但第二式在Arakawa-C网格下进行差分离散无法满足反对称性要求，而第一式可以满足此要求，具体推导参见附录\ref{app:平流项的反对称性}。
+这是由于虽然两式在连续情形下等价，但第二式在C网格下进行差分离散无法满足反对称性要求，而第一式可以满足此要求，具体推导参见附录\ref{app:平流项的反对称性}。
 
 将待求变量组成向量形式
 \begin{align}
@@ -39,41 +50,52 @@
     \end{array}
   \right]
 \end{align}
-方程右端项整理为包含平流项与科氏力的慢过程算子
+方程右端项整理为包含平流项的慢过程算子
 \begin{align}
   L_s = \left[
     \begin{array}{ccc}
-      L_a^u & f & 0 \\
-      - f & L_a^v & 0 \\
-      0 & 0 & L_a^\varphi
-    \end{array}
-  \right]
-\end{align}
-其中
-\begin{align}
-  L_a^u & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi}  \right) \\
-  L_a^v & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi} \right) \\
-  L_a^\varphi & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} \right)
-\end{align}
-包含重力项（梯度力项）的快过程算子
-\begin{align}
-  L_f = \left[
-    \begin{array}{ccc}
-      0 & 0 & L_g^u \\
-      0 & 0 & L_g^v \\
+      L_a^u & 0 & 0 \\
+      0 & L_a^v & 0 \\
       0 & 0 & 0
     \end{array}
   \right]
 \end{align}
 其中
 \begin{align}
+  L_a^u & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi}  \right) \\
+  L_a^v & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + u \frac{\partial \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} + v \cos{\varphi} \frac{\partial \cdot}{\partial \varphi} \right)
+\end{align}
+通过推导可知$L_s$具有反对称性
+\begin{align}
+  (L_a^u, U) & = 0 \\
+  (L_a^v, V) & = 0 \\
+  (L_s F, F) & = 0
+\end{align}
+包含气压梯度力项、科氏力项和质量散度项的快过程算子
+\begin{align}
+  L_f = \left[
+    \begin{array}{ccc}
+      0 & f & L_g^u \\
+      -f & 0 & L_g^v \\
+      0 & 0 & L_d
+    \end{array}
+  \right]
+\end{align}
+其中
+\begin{align}
   L_g^u & = - \frac{H}{a \cos{\varphi}} \frac{\partial \cdot + \phi_s}{\partial \lambda} \\
-  L_g^v & = - \frac{H}{a} \frac{\partial \cdot + \phi_s}{\partial \varphi}
+  L_g^v & = - \frac{H}{a} \frac{\partial \cdot + \phi_s}{\partial \varphi} \\
+  L_d & = - \frac{1}{2 a \cos{\varphi}} \left( \frac{\partial u \cdot}{\partial \lambda} + \frac{\partial v \cos{\varphi} \cdot}{\partial \varphi} \right)
+\end{align}
+同样快过程算子也满足反对称性
+\begin{align}
+  f V U - f U V + (L_a^u \phi, U) + (L_a^v \phi, V) + (L_d \phi, \phi) & = 0 \\
+  (L_f F, F) & = 0
 \end{align}
 可见算子$L_s$和$L_f$是非线性算子。
 
 \section{空间离散}
-采用等间距的经纬网格，变量布置采用Arakawa-C，即纬向风分量位于纬向半格点$\left( i + \frac{1}{2}, j \right)$，经向风分量位于经向半格点$\left( i, j + \frac{1}{2} \right)$，位势厚度等量位于整网格点$\left( i, j \right)$。
+采用等间距的经纬网格，变量布置采用C网格布置，即纬向风分量位于纬向半格点$\left( i + \frac{1}{2}, j \right)$，经向风分量位于经向半格点$\left( i, j + \frac{1}{2} \right)$，位势厚度等量位于整网格点$\left( i, j \right)$。
 \begin{align}
   H_{i+\frac{1}{2},j} & = \frac{H_{i,j} + H_{i+1,j}}{2} & H_{i,j+\frac{1}{2}} & = \frac{H_{i,j} + H_{i,j+1}}{2} \nonumber \\
   U_{i+\frac{1}{2},j} & = H_{i+\frac{1}{2},j} u_{i+\frac{1}{2},j} & V_{i,j+\frac{1}{2}} & = H_{i,j+\frac{1}{2}} v_{i,j+\frac{1}{2}} & \phi_{i,j} \nonumber
@@ -214,17 +236,18 @@
 
 \section{快慢过程分裂方案}
 
+根据之前快慢算子的定义，可以将出发方程写为如下形式
 \begin{align}
   \frac{\partial F}{\partial t} = - L_f F - L_s F
 \end{align}
 其中$L_f$是快过程，$L_s$是慢过程。
 
-设算子$L_f F$是为函数形式$G(F)$，$L_s F$为$S(F)$
+设快算子$L_f F$为函数形式$G(F)$，慢算子$L_s F$为$S(F)$，通过简单的推导得到$F$一阶和二阶时间导数项的表达式
 \begin{align}
   \frac{\partial F}{\partial t} & = - G(F) - S(F) \label{eqn:一阶导数项表达式} \\
   \frac{\partial^2 F}{\partial t^2} & = - G^\prime(F) \frac{\partial F}{\partial t} - S^\prime \frac{\partial F}{\partial t} = G^\prime G + S^\prime S + G^\prime S + S^\prime G \label{eqn:二阶导数项表达式}
 \end{align}
-根据Taylor展式，并做入下简记
+根据Taylor展式，并做如下简记
 \begin{align*}
   F(t_0) & = (F)^0 \\
   F(t_0 + \Delta{t}) & = (F)^1 \\
@@ -264,7 +287,7 @@
   \frac{\partial Q}{\partial t} & = - L_s Q + L_s (F)^0, (Q)^0 = (P)^1
 \end{align}
 \end{enumerate}
-其中快过程可以再细分为任意多步。
+其中快过程可以再细分为任意多步，已达到使用较大时间步长积分慢过程的目标。
 
 \subsection{CSP-1分裂模型}
 该模型首先将快过程积分一个时间步长：
@@ -383,7 +406,7 @@
 
 \section{平流项的反对称性}
 \label{app:平流项的反对称性}
-考察如下两种等价连续形式在Arakawa-C网格下离散格式的反对称性
+考察如下两种等价连续形式在C网格下离散格式的反对称性，以纬向动量方程中的平流项为例
 \begin{align}
   2 \frac{\partial u U}{\partial \lambda} - U \frac{\partial u}{\partial \lambda} + 2 \frac{\partial v \cos{\varphi} U}{\partial \varphi} - U \frac{\partial v \cos{\varphi}}{\partial \varphi} \\
   \frac{\partial u U}{\partial \lambda} + u \frac{\partial U}{\partial \lambda} + \frac{\partial v \cos{\varphi} U}{\partial \varphi} + v \cos{\varphi} \frac{\partial U}{\partial \varphi}

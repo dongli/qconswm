@@ -180,8 +180,8 @@ contains
 
     ! Convert wind from C grid to A grid.
     do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
-        state%ua(i,j) = 0.5 * (state%u(i,j) + state%u(i+1,j))
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+        state%ua(i,j) = 0.5 * (state%u(i,j) + state%u(i-1,j))
       end do
     end do
 
@@ -343,7 +343,11 @@ contains
         up1 = state%u(i,j) + state%u(i+1,j)
         um1 = state%u(i,j) + state%u(i-1,j)
         tend%u_adv_lon(i,j) = 0.5 / coef%full_dlon(j) * (up1 * state%iap%u(i+1,j) - um1 * state%iap%u(i-1,j))
+      end do
+    end do
 
+    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      do i = parallel%half_lon_start_idx, parallel%half_lon_end_idx
         vp1 = (state%v(i,j  ) + state%v(i+1,j  )) * mesh%half_cos_lat(j  )
         vm1 = (state%v(i,j-1) + state%v(i+1,j-1)) * mesh%half_cos_lat(j-1)
         tend%u_adv_lat(i,j) = 0.5 / coef%full_dlat(j) * (vp1 * state%iap%u(i,j+1) - vm1 * state%iap%u(i,j-1))
@@ -500,6 +504,11 @@ contains
         tend%mass_div_lon(i,j) = 1.0 / coef%full_dlon(j) * ( &
           (state%iap%gd(i,j) + state%iap%gd(i+1,j)) * state%iap%u(i,  j) - &
           (state%iap%gd(i,j) + state%iap%gd(i-1,j)) * state%iap%u(i-1,j))
+      end do
+    end do
+
+    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
         tend%mass_div_lat(i,j) = 1.0 / coef%full_dlat(j) * ( &
           (state%iap%gd(i,j) + state%iap%gd(i,j+1)) * state%iap%v(i,j  ) * mesh%half_cos_lat(j  ) - &
           (state%iap%gd(i,j) + state%iap%gd(i,j-1)) * state%iap%v(i,j-1) * mesh%half_cos_lat(j-1))

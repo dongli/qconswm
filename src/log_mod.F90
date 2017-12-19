@@ -23,10 +23,10 @@ contains
 
     character(*), intent(in) :: message
     character(*), intent(in), optional :: file
-    character(*), intent(in), optional :: line
+    integer, intent(in), optional :: line
 
     if (present(file) .and. present(line)) then
-      write(6, *) '[Notice]: ' // trim(file) // ': ' // trim(line) // ': ' // trim(message)
+      write(6, *) '[Notice]: ' // trim(file) // ': ' // to_string(line) // ': ' // trim(message)
     else
       write(6, *) '[Notice]: ' // trim(message)
     end if
@@ -37,10 +37,10 @@ contains
 
     character(*), intent(in) :: message
     character(*), intent(in), optional :: file
-    character(*), intent(in), optional :: line
+    integer, intent(in), optional :: line
 
     if (present(file) .and. present(line)) then
-      write(6, *) '[Warning]: ' // trim(file) // ': ' // trim(line) // ': ' // trim(message)
+      write(6, *) '[Warning]: ' // trim(file) // ': ' // to_string(line) // ': ' // trim(message)
     else
       write(6, *) '[Warning]: ' // trim(message)
     end if
@@ -51,10 +51,10 @@ contains
 
     character(*), intent(in) :: message
     character(*), intent(in), optional :: file
-    character(*), intent(in), optional :: line
+    integer, intent(in), optional :: line
 
     if (present(file) .and. present(line)) then
-      write(6, *) '[Error]: ' // trim(file) // ': ' // trim(line) // ': ' // trim(message)
+      write(6, *) '[Error]: ' // trim(file) // ': ' // to_string(line) // ': ' // trim(message)
     else
       write(6, *) '[Error]: ' // trim(message)
     end if
