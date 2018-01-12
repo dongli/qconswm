@@ -9,7 +9,7 @@ else ()
   set (CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
 endif ()
 
-set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -ffpe-summary=none")
+set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -ffpe-summary=none -Ofast -flto")
 
 find_package (PkgConfig)
 if (${PKG_CONFIG_FOUND})
@@ -21,7 +21,7 @@ if (${PKG_CONFIG_FOUND})
     message (FATAL_ERROR "Pkg-config could not find netcdf library!")
   endif ()
 else ()
-  message (FATAL_ERROR "Unable to find datetime-fortran library!")
+  message (FATAL_ERROR "Unable to find pkg-config library!")
 endif ()
 
 find_package (FortranDatetime)

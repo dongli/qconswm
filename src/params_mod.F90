@@ -38,6 +38,8 @@ module params_mod
   ! - none
   character(30) split_scheme
 
+  integer zonal_coarse_factors(10)
+
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
@@ -53,13 +55,16 @@ module params_mod
     time_scheme, &
     time_order, &
     qcon_modified, &
-    split_scheme
+    split_scheme, &
+    zonal_coarse_factors
 
 contains
 
   subroutine params_read(file_path)
 
     character(*), intent(in) :: file_path
+
+    zonal_coarse_factors(:) = 0
 
     open(10, file=file_path)
     read(10, nml=qconswm_params)
