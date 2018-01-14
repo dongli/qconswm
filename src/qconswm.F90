@@ -17,7 +17,7 @@ program qconswm
 
   call params_read(namelist_file_path)
 
-  call io_create_dataset(desc='Rossby-Haurwitz test', author='Li Dong <dongli@lasg.iap.ac.cn>', file_prefix='rh_test')
+  call io_create_dataset(desc='Rossby-Haurwitz test', author='Li Dong <dongli@lasg.iap.ac.cn>', file_prefix=case_name)
 
   call dycore_init()
 

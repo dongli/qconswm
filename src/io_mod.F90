@@ -13,6 +13,7 @@ module io_mod
 
   public io_init
   public io_create_dataset
+  public io_add_meta
   public io_add_dim
   public io_add_var
   public io_start_output
@@ -26,6 +27,7 @@ module io_mod
     character(256) author
     character(256) file_prefix
     type(var_type), pointer :: time_var => null()
+    type(map_type) metas
     type(map_type) dims
     type(map_type) vars
     real output_period
@@ -58,6 +60,13 @@ module io_mod
 
   type(map_type) datasets
   real time_units_in_seconds
+
+  interface io_add_meta
+    module procedure io_add_meta_1
+    module procedure io_add_meta_2
+    module procedure io_add_meta_3
+    module procedure io_add_meta_4
+  end interface io_add_meta
 
   interface io_output
     module procedure io_output_real_1d
@@ -131,6 +140,62 @@ contains
     call datasets%insert(dataset%name, dataset)
 
   end subroutine io_create_dataset
+
+  subroutine io_add_meta_1(name, value, dataset_name)
+
+    character(*), intent(in) :: name
+    integer, intent(in) :: value
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+
+    dataset => get_dataset(dataset_name)
+
+    call dataset%metas%insert(name, value)
+
+  end subroutine io_add_meta_1
+
+  subroutine io_add_meta_2(name, value, dataset_name)
+
+    character(*), intent(in) :: name
+    real, intent(in) :: value
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+
+    dataset => get_dataset(dataset_name)
+
+    call dataset%metas%insert(name, value)
+
+  end subroutine io_add_meta_2
+
+  subroutine io_add_meta_3(name, value, dataset_name)
+
+    character(*), intent(in) :: name
+    character(*), intent(in) :: value
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+
+    dataset => get_dataset(dataset_name)
+
+    call dataset%metas%insert(name, value)
+
+  end subroutine io_add_meta_3
+
+  subroutine io_add_meta_4(name, value, dataset_name)
+
+    character(*), intent(in) :: name
+    logical, intent(in) :: value
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+
+    dataset => get_dataset(dataset_name)
+
+    call dataset%metas%insert(name, value)
+
+  end subroutine io_add_meta_4
 
   subroutine io_add_dim(name, dataset_name, long_name, units, size)
 
@@ -287,6 +352,21 @@ contains
     ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, 'dataset', dataset%name)
     ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, 'desc', dataset%desc)
     ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, 'author', dataset%author)
+
+    iter = map_iterator_type(dataset%metas)
+    do while (.not. iter%at_end())
+      select type (value => iter%value())
+      type is (integer)
+        ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, iter%key(), value)
+      type is (real)
+        ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, iter%key(), value)
+      type is (character(*))
+        ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, iter%key(), value)
+      type is (logical)
+        ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, iter%key(), to_string(value))
+      end select
+      call iter%next()
+    end do
 
     iter = map_iterator_type(dataset%dims)
     do while (.not. iter%at_end())

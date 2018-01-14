@@ -1,12 +1,14 @@
 &qconswm_params
+case_name = 'rh_test.360x181.coarse.fac5.dt240'
 days = 32
-num_lon = 250
-num_lat = 126
-time_step_size = 90
+num_lon = 360
+num_lat = 181
+time_step_size = 240
 output_periods = '1 days'
 time_scheme = 'predict_correct'
 qcon_modified = .true.
 split_scheme = 'csp2' ! or 'csp1' or 'isp'
 subcycles = 8
+use_zonal_coarse = .true.
 zonal_coarse_factors = 5
 /

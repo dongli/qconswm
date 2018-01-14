@@ -45,6 +45,10 @@ contains
 
     integer i, j, time_idx
 
+    if (case_name == '') then
+      call log_error('case_name is not set!')
+    end if
+
     call mesh_init()
     call time_init()
     call parallel_init()
@@ -99,6 +103,12 @@ contains
       split_scheme = 0
       call log_notice('No fast-slow split.')
     end select
+
+    call io_add_meta('use_zonal_coarse', use_zonal_coarse)
+    call io_add_meta('time_step_size', time_step_size)
+    call io_add_meta('time_scheme', time_scheme_in)
+    call io_add_meta('split_scheme', split_scheme_in)
+    call io_add_meta('subcycles', subcycles)
 
     call io_add_dim('lon', size=mesh%num_full_lon)
     call io_add_dim('lat', size=mesh%num_full_lat)
@@ -250,38 +260,35 @@ contains
     ! Calculate maximum CFL along each zonal circle.
     state%coarse_factor(:) = 1
 !$omp parallel do private(cfl) schedule(static)
-    do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
-      state%max_cfl(j) = 0.0
-      do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-        cfl = dt * state%iap%gd(i,j) / coef%full_dlon(j)
-        if (state%max_cfl(j) < cfl) state%max_cfl(j) = cfl
-      end do
-      ! Calculate coarsed state.
-      if (state%max_cfl(j) > 0.05) then
-        ! Find coarse_factor based on excess of CFL.
-        do k = 1, size(zonal_coarse_factors)
-          if (state%max_cfl(j) < zonal_coarse_factors(k)) then
-            state%coarse_factor(j) = zonal_coarse_factors(k)
-            exit
-          end if
-          if (zonal_coarse_factors(k) == 0) then
-            call log_error('Insufficient zonal_coarse_factors or time step size is too large!')
-          end if
+    if (use_zonal_coarse) then
+      do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
+        state%max_cfl(j) = 0.0
+        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
+          cfl = dt * state%iap%gd(i,j) / coef%full_dlon(j)
+          if (state%max_cfl(j) < cfl) state%max_cfl(j) = cfl
         end do
-        ! call fine_array_to_coarse_array(state%u(:,j-1), state%coarse_u(:,1,j), state%coarse_factor(j))
-        ! call fine_array_to_coarse_array(state%u(:,j), state%coarse_u(:,2,j), state%coarse_factor(j))
-        ! call fine_array_to_coarse_array(state%u(:,j+1), state%coarse_u(:,3,j), state%coarse_factor(j))
-        ! call fine_array_to_coarse_array(state%v(:,j), state%coarse_v(:,j), state%coarse_factor(j)) ! FIXME: There is problem due to v is on half lat grids.
-        call fine_array_to_coarse_array(state%gd(:,j), state%coarse_gd(:,j), state%coarse_factor(j))
-        call fine_array_to_coarse_array(state%iap%u(:,j), state%iap%coarse_u(:,j), state%coarse_factor(j))
-        ! call fine_array_to_coarse_array(state%iap%v(:,j), state%iap%coarse_v(:,j), state%coarse_ffactor(j))
-        call fine_array_to_coarse_array(static%ghs(:,j), static%coarse_ghs(:,j), state%coarse_factor(j))
-        state%iap%coarse_gd(:,j) = sqrt(state%coarse_gd(:,j))
-        !print *, j, state%max_cfl(j)
-      end if
-    end do
+        ! Calculate coarsed state.
+        if (state%max_cfl(j) > 0.2) then
+          ! Find coarse_factor based on excess of CFL.
+          do k = 1, size(zonal_coarse_factors)
+            if (state%max_cfl(j) < zonal_coarse_factors(k)) then
+              state%coarse_factor(j) = zonal_coarse_factors(k)
+              exit
+            end if
+            if (zonal_coarse_factors(k) == 0) then
+              call log_error('Insufficient zonal_coarse_factors or time step size is too large!')
+            end if
+          end do
+          call fine_array_to_coarse_array(state%gd(:,j), state%coarse_gd(:,j), state%coarse_factor(j))
+          call fine_array_to_coarse_array(state%iap%u(:,j), state%iap%coarse_u(:,j), state%coarse_factor(j))
+          call fine_array_to_coarse_array(static%ghs(:,j), static%coarse_ghs(:,j), state%coarse_factor(j))
+          state%iap%coarse_gd(:,j) = sqrt(state%coarse_gd(:,j))
+          ! print *, j, state%max_cfl(j)
+        end if
+      end do
+    end if
 !$omp end parallel do
-    !stop
+    call log_add_diag('num_coarse_zonal', count(state%coarse_factor /= 1))
 
     select case (pass)
     case (all_pass)
@@ -443,42 +450,18 @@ contains
     ! U
 !$omp parallel do schedule(static)
     do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
-      ! if (state%coarse_factor(j) == 1) then
-        call zonal_u_momentum_advection( &
-          j, 1, parallel%half_lon_lb, parallel%half_lon_ub, &
-          state%u(:,j), state%iap%u(:,j), tend%u_adv_lon(:,j))
-      ! else
-      !   factor = state%coarse_factor(j)
-      !   ! NOTE: Assume no zonal decomposition.
-      !   call zonal_u_momentum_advection( &
-      !     j, factor, coarse_lb(factor), coarse_ub(factor), &
-      !     state%coarse_u(:,2,j), state%iap%coarse_u(:,j), coarse_tend)
-      !   call coarse_tend_to_fine_tend(coarse_tend, tend%u_adv_lon(:,j), factor)
-      ! end if
+      call zonal_u_momentum_advection( &
+        j, 1, parallel%half_lon_lb, parallel%half_lon_ub, &
+        state%u(:,j), state%iap%u(:,j), tend%u_adv_lon(:,j))
     end do
 !$omp end parallel do
 
     ! V
 !$omp parallel do schedule(static)
     do j = parallel%half_lat_start_idx, parallel%half_lat_end_idx
-      ! if (state%coarse_factor(j) == 1 .and. state%coarse_factor(j+1) == 1) then
-        call zonal_v_momentum_advection( &
-          j, 1, parallel%full_lon_lb, parallel%full_lon_ub, &
-          state%u(:,j), state%u(:,j+1), state%iap%v(:,j), tend%v_adv_lon(:,j))
-      ! else
-      !   if (state%coarse_factor(j) < state%coarse_factor(j+1)) then
-      !     factor = state%coarse_factor(j+1)
-      !     call zonal_v_momentum_advection( &
-      !       j, factor, coarse_lb(factor), coarse_ub(factor), &
-      !       state%coarse_u(:,1,j+1), state%coarse_u(:,2,j+1), state%iap%coarse_v(:,j), coarse_tend)
-      !   else
-      !     factor = state%coarse_factor(j)
-      !     call zonal_v_momentum_advection( &
-      !       j, factor, coarse_lb(factor), coarse_ub(factor), &
-      !       state%coarse_u(:,2,j), state%coarse_u(:,3,j), state%iap%coarse_v(:,j), coarse_tend)
-      !   end if
-      !   call coarse_tend_to_fine_tend(coarse_tend, tend%v_adv_lon(:,j), factor)
-      ! end if
+      call zonal_v_momentum_advection( &
+        j, 1, parallel%full_lon_lb, parallel%full_lon_ub, &
+        state%u(:,j), state%u(:,j+1), state%iap%v(:,j), tend%v_adv_lon(:,j))
     end do
 !$omp end parallel do
 

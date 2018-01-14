@@ -8,16 +8,30 @@ module log_mod
 
   type(map_type) diags
 
+  interface log_add_diag
+    module procedure log_add_diag_1
+    module procedure log_add_diag_2
+  end interface log_add_diag
+
 contains
 
-  subroutine log_add_diag(name, value)
+  subroutine log_add_diag_1(name, value)
+
+    character(*), intent(in) :: name
+    integer, intent(in) :: value
+
+    call diags%insert(name, value)
+
+  end subroutine log_add_diag_1
+
+  subroutine log_add_diag_2(name, value)
 
     character(*), intent(in) :: name
     real, intent(in) :: value
 
     call diags%insert(name, value)
 
-  end subroutine log_add_diag
+  end subroutine log_add_diag_2
 
   subroutine log_notice(message, file, line)
 
@@ -73,6 +87,8 @@ contains
     do while (.not. iter%at_end())
       value => iter%value()
       select type(value)
+      type is (integer)
+        write(6, '(X, A)', advance='no') trim(to_string(value))
       type is (real)
         write(6, '(X, A)', advance='no') trim(to_string(value, 20))
       end select

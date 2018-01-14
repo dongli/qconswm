@@ -22,6 +22,7 @@ module params_mod
   integer :: end_time(5) = [0, 0, 0, 0, 0]
   character(30) :: time_units = 'days'
 
+  character(256) case_name
   character(30) :: output_periods(1) = ['6 hours']
 
   ! Options:
@@ -38,6 +39,7 @@ module params_mod
   ! - none
   character(30) split_scheme
 
+  logical use_zonal_coarse
   integer zonal_coarse_factors(10)
 
   namelist /qconswm_params/ &
@@ -51,11 +53,13 @@ module params_mod
     end_time, &
     time_units, &
     time_step_size, &
+    case_name, &
     output_periods, &
     time_scheme, &
     time_order, &
     qcon_modified, &
     split_scheme, &
+    use_zonal_coarse, &
     zonal_coarse_factors
 
 contains
@@ -64,6 +68,7 @@ contains
 
     character(*), intent(in) :: file_path
 
+    use_zonal_coarse = .true.
     zonal_coarse_factors(:) = 0
 
     open(10, file=file_path)
