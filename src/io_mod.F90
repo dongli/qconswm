@@ -66,6 +66,7 @@ module io_mod
     module procedure io_add_meta_2
     module procedure io_add_meta_3
     module procedure io_add_meta_4
+    module procedure io_add_meta_5
   end interface io_add_meta
 
   interface io_output
@@ -196,6 +197,20 @@ contains
     call dataset%metas%insert(name, value)
 
   end subroutine io_add_meta_4
+
+  subroutine io_add_meta_5(name, values, dataset_name)
+
+    character(*), intent(in) :: name
+    integer, intent(in) :: values(:)
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+
+    dataset => get_dataset(dataset_name)
+
+    call dataset%metas%insert(name, to_string(values))
+
+  end subroutine io_add_meta_5
 
   subroutine io_add_dim(name, dataset_name, long_name, units, size)
 

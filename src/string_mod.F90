@@ -9,6 +9,7 @@ module string_mod
 
   interface to_string
     module procedure integer_to_string
+    module procedure integer_array_to_string
     module procedure real4_to_string
     module procedure real8_to_string
     module procedure logical_to_string
@@ -27,6 +28,20 @@ contains
     res = tmp
 
   end function integer_to_string
+
+  function integer_array_to_string(x) result(res)
+
+    integer, intent(in) :: x(:)
+    character(:), allocatable :: res
+
+    character((range(x)+4) * size(x)) tmp
+    character(256) fmt
+
+    write(fmt, '("(", I0, "(I0, "", ""))")') size(x)
+    write(tmp, fmt) x
+    res = tmp(1:len_trim(tmp)-1)
+
+  end function integer_array_to_string
 
   function real4_to_string(x, decimal_width) result(res)
 

@@ -105,6 +105,7 @@ contains
     end select
 
     call io_add_meta('use_zonal_coarse', use_zonal_coarse)
+    call io_add_meta('zonal_coarse_factors', pack(zonal_coarse_factors, zonal_coarse_factors /= 0))
     call io_add_meta('time_step_size', time_step_size)
     call io_add_meta('time_scheme', time_scheme_in)
     call io_add_meta('split_scheme', split_scheme_in)
