@@ -27,8 +27,10 @@ module mesh_mod
     real, allocatable :: full_sin_lat(:)
     real, allocatable :: half_sin_lat(:)
     ! For output
-    real, allocatable :: lon_deg(:)
-    real, allocatable :: lat_deg(:)
+    real, allocatable :: full_lon_deg(:)
+    real, allocatable :: half_lon_deg(:)
+    real, allocatable :: full_lat_deg(:)
+    real, allocatable :: half_lat_deg(:)
   end type mesh_type
 
   type(mesh_type) mesh
@@ -52,24 +54,28 @@ contains
     allocate(mesh%half_cos_lat(mesh%num_half_lat))
     allocate(mesh%full_sin_lat(mesh%num_full_lat))
     allocate(mesh%half_sin_lat(mesh%num_half_lat))
-    allocate(mesh%lon_deg(mesh%num_full_lon))
-    allocate(mesh%lat_deg(mesh%num_full_lat))
+    allocate(mesh%full_lon_deg(mesh%num_full_lon))
+    allocate(mesh%half_lon_deg(mesh%num_half_lon))
+    allocate(mesh%full_lat_deg(mesh%num_full_lat))
+    allocate(mesh%half_lat_deg(mesh%num_half_lat))
 
     mesh%dlon = 2 * pi / mesh%num_full_lon
     do i = 1, mesh%num_full_lon
       mesh%full_lon(i) = (i - 1) * mesh%dlon
       mesh%half_lon(i) = mesh%full_lon(i) + 0.5 * mesh%dlon
-      mesh%lon_deg(i) = mesh%full_lon(i) * rad_to_deg
+      mesh%full_lon_deg(i) = mesh%full_lon(i) * rad_to_deg
+      mesh%half_lon_deg(i) = mesh%half_lon(i) * rad_to_deg
     end do
 
     mesh%dlat = pi / mesh%num_half_lat
     do j = 1, mesh%num_half_lat
       mesh%full_lat(j) = - 0.5 * pi + (j - 1) * mesh%dlat
       mesh%half_lat(j) = mesh%full_lat(j) + 0.5 * mesh%dlat
-      mesh%lat_deg(j) = mesh%full_lat(j) * rad_to_deg
+      mesh%full_lat_deg(j) = mesh%full_lat(j) * rad_to_deg
+      mesh%half_lat_deg(j) = mesh%half_lat(j) * rad_to_deg
     end do
     mesh%full_lat(num_lat) = 0.5 * pi
-    mesh%lat_deg(num_lat) = 90.0
+    mesh%full_lat_deg(num_lat) = 90.0
 
     do j = 1, mesh%num_half_lat
       mesh%half_cos_lat(j) = cos(mesh%half_lat(j))
@@ -99,8 +105,10 @@ contains
     if (allocated(mesh%half_cos_lat)) deallocate(mesh%half_cos_lat)
     if (allocated(mesh%full_sin_lat)) deallocate(mesh%full_sin_lat)
     if (allocated(mesh%half_sin_lat)) deallocate(mesh%half_sin_lat)
-    if (allocated(mesh%lon_deg)) deallocate(mesh%lon_deg)
-    if (allocated(mesh%lat_deg)) deallocate(mesh%lat_deg)
+    if (allocated(mesh%full_lon_deg)) deallocate(mesh%full_lon_deg)
+    if (allocated(mesh%half_lon_deg)) deallocate(mesh%half_lon_deg)
+    if (allocated(mesh%full_lat_deg)) deallocate(mesh%full_lat_deg)
+    if (allocated(mesh%half_lat_deg)) deallocate(mesh%half_lat_deg)
 
     call log_notice('Mesh module is finalized.')
 

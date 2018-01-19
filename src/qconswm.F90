@@ -17,11 +17,13 @@ program qconswm
 
   call params_read(namelist_file_path)
 
-  call io_create_dataset(desc='Rossby-Haurwitz test', author='Li Dong <dongli@lasg.iap.ac.cn>', file_prefix=case_name)
-
   call dycore_init()
 
-  call rossby_haurwitz_test_set_initial_condition()
+  if (is_restart_run) then
+    call dycore_restart()
+  else
+    call rossby_haurwitz_test_set_initial_condition()
+  end if
 
   call dycore_run()
 

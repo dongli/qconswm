@@ -23,7 +23,12 @@ module params_mod
   character(30) :: time_units = 'days'
 
   character(256) case_name
-  character(30) :: output_periods(1) = ['6 hours']
+  character(256) case_desc
+  character(256) author
+  character(30) :: history_periods(1) = ['6 hours']
+  character(30) :: restart_period = ''
+
+  character(256) :: restart_file = ''
 
   ! Options:
   ! - predict-correct
@@ -42,6 +47,8 @@ module params_mod
   logical use_zonal_coarse
   integer zonal_coarse_factors(10)
 
+  logical is_restart_run
+
   namelist /qconswm_params/ &
     num_lon, &
     num_lat, &
@@ -54,7 +61,11 @@ module params_mod
     time_units, &
     time_step_size, &
     case_name, &
-    output_periods, &
+    case_desc, &
+    author, &
+    history_periods, &
+    restart_period, &
+    restart_file, &
     time_scheme, &
     time_order, &
     qcon_modified, &
@@ -74,6 +85,9 @@ contains
     open(10, file=file_path)
     read(10, nml=qconswm_params)
     close(10)
+
+    is_restart_run = restart_file /= ''
+    if (restart_period == '') restart_period = history_periods(1)
 
   end subroutine params_read
 

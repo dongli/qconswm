@@ -6,6 +6,8 @@ module string_mod
 
   public to_string
   public string_split
+  public string_replace
+  public string_delete
 
   interface to_string
     module procedure integer_to_string
@@ -119,5 +121,36 @@ contains
     end if
 
   end function string_split
+
+  function string_replace(x, substr, newstr) result(res)
+
+    character(*), intent(in) :: x
+    character(*), intent(in) :: substr
+    character(*), intent(in) :: newstr
+    character(:), allocatable :: res
+
+    integer start_pos, end_pos
+
+    start_pos = index(x, substr)
+    end_pos = start_pos + len_trim(substr) - 1
+
+    res = x(1:start_pos-1) // trim(newstr) // x(end_pos+1:len_trim(x))
+
+  end function string_replace
+
+  function string_delete(x, substr) result(res)
+
+    character(*), intent(in) :: x
+    character(*), intent(in) :: substr
+    character(:), allocatable :: res
+
+    integer start_pos, end_pos
+
+    start_pos = index(x, substr)
+    end_pos = start_pos + len_trim(substr) - 1
+
+    res = x(1:start_pos-1) // x(end_pos+1:len_trim(x))
+
+  end function string_delete
 
 end module string_mod

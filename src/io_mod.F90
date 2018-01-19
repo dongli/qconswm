@@ -6,6 +6,7 @@ module io_mod
   use params_mod, start_time_in => start_time
   use time_mod
   use string_mod
+  use parallel_mod
 
   implicit none
 
@@ -19,18 +20,23 @@ module io_mod
   public io_start_output
   public io_output
   public io_end_output
+  public io_start_input
+  public io_get_meta
+  public io_input
+  public io_end_input
 
   type dataset_type
-    integer id
+    integer :: id = -1
     character(30) name
     character(256) desc
     character(256) author
-    character(256) file_prefix
+    character(256) file_prefix_or_path
+    character(10) mode
     type(var_type), pointer :: time_var => null()
     type(map_type) metas
     type(map_type) dims
     type(map_type) vars
-    real output_period
+    real period
     integer :: time_step = 0
   contains
     procedure :: get_dim => get_dim_from_dataset
@@ -62,17 +68,25 @@ module io_mod
   real time_units_in_seconds
 
   interface io_add_meta
-    module procedure io_add_meta_1
-    module procedure io_add_meta_2
-    module procedure io_add_meta_3
-    module procedure io_add_meta_4
-    module procedure io_add_meta_5
+    module procedure io_add_meta_integer
+    module procedure io_add_meta_real
+    module procedure io_add_meta_string
+    module procedure io_add_meta_logical
+    module procedure io_add_meta_integer_array
   end interface io_add_meta
 
   interface io_output
     module procedure io_output_real_1d
     module procedure io_output_real_2d
   end interface io_output
+
+  interface io_get_meta
+    module procedure io_get_meta_str
+  end interface io_get_meta
+
+  interface io_input
+    module procedure io_input_real_2d
+  end interface io_input
 
 contains
 
@@ -91,58 +105,118 @@ contains
 
   end subroutine io_init
 
-  subroutine io_create_dataset(name, desc, author, file_prefix)
+  subroutine io_create_dataset(name, desc, file_prefix, file_path, mode, period)
 
     character(*), intent(in), optional :: name
-    character(*), intent(in) :: desc
-    character(*), intent(in) :: author
-    character(*), intent(in) :: file_prefix
+    character(*), intent(in), optional :: desc
+    character(*), intent(in), optional :: file_prefix
+    character(*), intent(in), optional :: file_path
+    character(*), intent(in), optional :: mode
+    character(*), intent(in), optional :: period
 
-    character(30) name_
+    character(30) name_, mode_, period_, period_value, period_unit
+    character(256) desc_, file_prefix_, file_path_
     type(dataset_type) dataset
+    logical is_exist
     integer i
 
     if (present(name)) then
       name_ = name
     else
-      name_ = 'master'
+      name_ = 'hist0'
+    end if
+    if (present(desc)) then
+      desc_ = desc
+    else
+      desc_ = ''
+    end if
+    if (present(file_prefix)) then
+      file_prefix_ = file_prefix
+    else
+      file_prefix_ = ''
+    end if
+    if (present(file_path)) then
+      file_path_ = file_path
+    else
+      file_path_ = ''
+    end if
+    if (present(mode)) then
+      mode_ = mode
+    else
+      mode_ = 'output'
+    end if
+    if (present(period)) then
+      period_ = period
+    else
+      if (name_(1:4) == 'hist') then
+        read(name_(5:len_trim(name_)), '(I' // to_string(len_trim(name_) - 4) // ')') i
+        period_ = history_periods(i + 1)
+      else
+        period_ = 'once'
+      end if
+    end if
+    if (present(file_path) .and. period_ /= 'once') then
+      call log_warning('io_create_dataset: Set file_path to "' // trim(file_path_) // &
+        '", but period is not once! Reset period.')
+      period_ = 'once'
+    end if
+
+    if (mode_ == 'input') then
+      inquire(file=file_path_, exist=is_exist)
+      if (.not. is_exist) then
+        call log_error('io_create_dataset: Input file "' // trim(file_path_) // '" does not exist!')
+      end if
     end if
 
     if (datasets%mapped(name_)) then
-      write(6, *) '[Error]: Already created dataset ' // trim(name_) // '!'
-      stop 1
+      call log_error('Already created dataset ' // trim(name_) // '!')
     end if
 
     dataset%name = name_
-    dataset%desc = desc
+    dataset%desc = desc_
     dataset%author = author
-    dataset%file_prefix = file_prefix
-    i = datasets%size() + 1
-    name_ = string_split(output_periods(i), 1)
-    read(name_, *) dataset%output_period 
-    select case (string_split(output_periods(i), 2))
+    if (file_prefix_ /= '' .and. file_path_ == '') then
+      dataset%file_prefix_or_path = file_prefix_
+    else if (file_prefix_ == '' .and. file_path_ /= '') then
+      dataset%file_prefix_or_path = file_path_
+    end if
+    if (name_(1:4) == 'hist') then
+      dataset%file_prefix_or_path = trim(dataset%file_prefix_or_path) // '.' // trim(string_delete(name_, 'ist'))
+    end if
+    dataset%mode = mode_
+    if (period_ /= 'once') then
+      period_value = string_split(period_, 1)
+      period_unit = string_split(period_, 2)
+      read(period_value, *) dataset%period 
+    else
+      period_unit = 'once'
+    end if
+    select case (period_unit)
     case ('days')
-      dataset%output_period = dataset%output_period * 86400
+      dataset%period = dataset%period * 86400
     case ('hours')
-      dataset%output_period = dataset%output_period * 3600
+      dataset%period = dataset%period * 3600
     case ('minutes')
-      dataset%output_period = dataset%output_period * 60
+      dataset%period = dataset%period * 60
     case ('seconds')
-      dataset%output_period = dataset%output_period
+      dataset%period = dataset%period
     case ('steps')
-      dataset%output_period = dataset%output_period * time_step_size
+      dataset%period = dataset%period * time_step_size
+    case ('once')
+      dataset%period = 0
     case default
-      call log_error('Invalid output period ' // trim(output_periods(i)))
+      call log_error('Invalid IO period ' // trim(period_) // '!')
     end select
 
-    ! Add alert for output.
-    call time_add_alert('output #' // to_string(i), seconds=dataset%output_period)
+    call time_add_alert(trim(dataset%name) // '.' // trim(dataset%mode), seconds=dataset%period)
 
-    call datasets%insert(dataset%name, dataset)
+    call datasets%insert(trim(dataset%name) // '.' // trim(dataset%mode), dataset)
+
+    call log_notice('Create ' // trim(dataset%mode) // ' dataset ' // trim(dataset%file_prefix_or_path) // '.')
 
   end subroutine io_create_dataset
 
-  subroutine io_add_meta_1(name, value, dataset_name)
+  subroutine io_add_meta_integer(name, value, dataset_name)
 
     character(*), intent(in) :: name
     integer, intent(in) :: value
@@ -150,13 +224,13 @@ contains
 
     type(dataset_type), pointer :: dataset
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     call dataset%metas%insert(name, value)
 
-  end subroutine io_add_meta_1
+  end subroutine io_add_meta_integer
 
-  subroutine io_add_meta_2(name, value, dataset_name)
+  subroutine io_add_meta_real(name, value, dataset_name)
 
     character(*), intent(in) :: name
     real, intent(in) :: value
@@ -164,13 +238,13 @@ contains
 
     type(dataset_type), pointer :: dataset
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     call dataset%metas%insert(name, value)
 
-  end subroutine io_add_meta_2
+  end subroutine io_add_meta_real
 
-  subroutine io_add_meta_3(name, value, dataset_name)
+  subroutine io_add_meta_string(name, value, dataset_name)
 
     character(*), intent(in) :: name
     character(*), intent(in) :: value
@@ -178,13 +252,13 @@ contains
 
     type(dataset_type), pointer :: dataset
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     call dataset%metas%insert(name, value)
 
-  end subroutine io_add_meta_3
+  end subroutine io_add_meta_string
 
-  subroutine io_add_meta_4(name, value, dataset_name)
+  subroutine io_add_meta_logical(name, value, dataset_name)
 
     character(*), intent(in) :: name
     logical, intent(in) :: value
@@ -192,13 +266,13 @@ contains
 
     type(dataset_type), pointer :: dataset
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     call dataset%metas%insert(name, value)
 
-  end subroutine io_add_meta_4
+  end subroutine io_add_meta_logical
 
-  subroutine io_add_meta_5(name, values, dataset_name)
+  subroutine io_add_meta_integer_array(name, values, dataset_name)
 
     character(*), intent(in) :: name
     integer, intent(in) :: values(:)
@@ -206,11 +280,11 @@ contains
 
     type(dataset_type), pointer :: dataset
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     call dataset%metas%insert(name, to_string(values))
 
-  end subroutine io_add_meta_5
+  end subroutine io_add_meta_integer_array
 
   subroutine io_add_dim(name, dataset_name, long_name, units, size)
 
@@ -224,11 +298,10 @@ contains
     type(dim_type) dim
     integer i
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     if (dataset%dims%mapped(name)) then
-      write(6, *) '[Error]: Already added dimension ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!'
-      stop 1
+      call log_error('Already added dimension ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!')
     end if
 
     dim%name = name
@@ -286,11 +359,10 @@ contains
     logical found
     real real
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     if (dataset%vars%mapped(name)) then
-      write(6, *) '[Error]: Already added variable ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!'
-      stop 1
+      call log_error('Already added variable ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!')
     end if
 
     var%name = name
@@ -315,8 +387,7 @@ contains
       case ('integer(8)')
         var%data_type = NF90_INT64
       case default
-        write(6, *) '[Error]: Unknown data type ' // trim(data_type) // ' for variable ' // trim(name) // '!'
-        stop 1
+        call log_error('Unknown data type ' // trim(data_type) // ' for variable ' // trim(name) // '!')
       end select
     end if
 
@@ -333,8 +404,7 @@ contains
         call iter%next()
       end do
       if (.not. found) then
-        write(6, *) '[Error]: Unknown dimension ' // trim(dim_names(i)) // ' for variable ' // trim(name) // '!'
-        stop 1
+        call log_error('Unknown dimension ' // trim(dim_names(i)) // ' for variable ' // trim(name) // '!')
       end if
     end do
 
@@ -355,14 +425,13 @@ contains
     type(var_type), pointer :: var
     integer i, ierr, dimids(10)
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
-    write(file_path, "(A, '.', A, '.nc')") trim(dataset%file_prefix), trim(curr_time_format)
+    write(file_path, "(A, '.', A, '.nc')") trim(dataset%file_prefix_or_path), trim(curr_time_format)
 
     ierr = NF90_CREATE(file_path, NF90_CLOBBER, dataset%id)
     if (ierr /= NF90_NOERR) then
-      write(6, *) '[Error]: Failed to create NetCDF file to output!'
-      stop 1
+      call log_error('Failed to create NetCDF file to output!')
     end if
     ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, 'dataset', dataset%name)
     ierr = NF90_PUT_ATT(dataset%id, NF90_GLOBAL, 'desc', dataset%desc)
@@ -388,8 +457,7 @@ contains
       dim => dataset%get_dim(iter%key())
       ierr = NF90_DEF_DIM(dataset%id, dim%name, dim%size, dim%id)
       if (ierr /= NF90_NOERR) then
-        write(6, *) '[Error]: Failed to define dimension ' // trim(dim%name) // '!'
-        stop 1
+        call log_error('Failed to define dimension ' // trim(dim%name) // '!')
       end if
       call iter%next()
     end do
@@ -402,8 +470,7 @@ contains
       end do
       ierr = NF90_DEF_VAR(dataset%id, var%name, var%data_type, dimids(1:size(var%dims)), var%id)
       if (ierr /= NF90_NOERR) then
-        write(6, *) '[Error]: Failed to define variable ' // trim(var%name) // '!'
-        stop 1
+        call log_error('Failed to define variable ' // trim(var%name) // '!')
       end if
       ierr = NF90_PUT_ATT(dataset%id, var%id, 'long_name', trim(var%long_name))
       ierr = NF90_PUT_ATT(dataset%id, var%id, 'units', trim(var%units))
@@ -414,11 +481,9 @@ contains
 
     ! Write time dimension variable.
     if (associated(dataset%time_var)) then
-      ierr = NF90_PUT_VAR(dataset%id, dataset%time_var%id, &
-        dataset%output_period * dataset%time_step / time_units_in_seconds)
+      ierr = NF90_PUT_VAR(dataset%id, dataset%time_var%id, time_elapsed_seconds() / time_units_in_seconds)
       if (ierr /= NF90_NOERR) then
-        write(6, *) '[Error]: Failed to write variable time!'
-        stop 1
+        call log_error('Failed to write variable time!')
       end if
       dataset%time_step = dataset%time_step + 1
     end if
@@ -429,19 +494,18 @@ contains
 
     character(*), intent(in) :: name
     real, intent(in) :: array(:)
-    character(30), intent(in), optional :: dataset_name
+    character(*), intent(in), optional :: dataset_name
 
     type(dataset_type), pointer :: dataset
     type(var_type), pointer :: var
     integer ierr    
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
     var => dataset%get_var(name)
 
     ierr = NF90_PUT_VAR(dataset%id, var%id, array)
     if (ierr /= NF90_NOERR) then
-      write(6, *) '[Error]: Failed to write variable ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!'
-      stop 1
+      call log_error('Failed to write variable ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!')
     end if
 
   end subroutine io_output_real_1d
@@ -450,14 +514,29 @@ contains
 
     character(*), intent(in) :: name
     real, intent(in) :: array(:,:)
-    character(30), intent(in), optional :: dataset_name
+    character(*), intent(in), optional :: dataset_name
 
     type(dataset_type), pointer :: dataset
     type(var_type), pointer :: var
-    integer start(3), count(3), i, ierr    
+    integer lb1, ub1, lb2, ub2
+    integer i, j, ierr, varid
+    integer start(3), count(3)    
+    real, allocatable :: buffer(:,:)
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
     var => dataset%get_var(name)
+
+    lb1 = lbound(array, 1) + parallel%lon_halo_width
+    ub1 = ubound(array, 1) - parallel%lon_halo_width
+    lb2 = lbound(array, 2) + parallel%lat_halo_width
+    ub2 = ubound(array, 2) - parallel%lat_halo_width
+    allocate(buffer(lb1:ub1,lb2:ub2))
+
+    do j = lb2, ub2
+      do i = lb1, ub1
+        buffer(i,j) = array(i,j)
+      end do
+    end do
 
     do i = 1, 3
       start(i) = 1
@@ -467,12 +546,12 @@ contains
         count(i) = var%dims(i)%ptr%size
       end if
     end do
-    ierr = NF90_PUT_VAR(dataset%id, var%id, array, start, count)
+    ierr = NF90_PUT_VAR(dataset%id, var%id, buffer, start, count)
     if (ierr /= NF90_NOERR) then
-      write(6, *) '[Error]: Failed to write variable ' // trim(name) // ' in dataset ' // trim(dataset%name) // '!'
-      write(6, *) NF90_STRERROR(ierr)
-      stop 1
+      call log_error('Failed to write variable ' // trim(name) // ' to ' // trim(dataset%name) // '!' // NF90_STRERROR(ierr))
     end if
+
+    deallocate(buffer)
 
   end subroutine io_output_real_2d
 
@@ -483,30 +562,119 @@ contains
     type(dataset_type), pointer :: dataset
     integer ierr
 
-    dataset => get_dataset(dataset_name)
+    dataset => get_dataset(dataset_name, 'output')
 
     ierr = NF90_CLOSE(dataset%id)
     if (ierr /= NF90_NOERR) then
-      write(6, *) '[Error]: Failed to close dataset ' // trim(dataset%name) // '!'
-      stop 1
+      call log_error('Failed to close dataset ' // trim(dataset%name) // '!')
     end if
 
   end subroutine io_end_output
 
-  function get_dataset(name) result(res)
+  subroutine io_start_input(dataset_name)
+
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+    integer ierr
+
+    dataset => get_dataset(dataset_name, 'input')
+
+    ierr = NF90_OPEN(dataset%file_prefix_or_path, NF90_NOWRITE, dataset%id)
+    if (ierr /= NF90_NOERR) then
+      call log_error('Failed to open NetCDF file to input! ' // trim(NF90_STRERROR(ierr)))
+    end if
+
+  end subroutine io_start_input
+
+  function io_get_meta_str(name, dataset_name) result(res)
+
+    character(*), intent(in) :: name
+    character(*), intent(in), optional :: dataset_name
+    character(:), allocatable :: res
+
+    type(dataset_type), pointer :: dataset
+    character(256) meta
+    integer ierr
+
+    dataset => get_dataset(dataset_name, 'input')
+
+    ierr = NF90_GET_ATT(dataset%id, NF90_GLOBAL, name, meta)
+    if (ierr /= NF90_NOERR) then
+      call log_error('Failed to get meta "' // trim(name) // '" from file ' // trim(dataset%file_prefix_or_path) // '!')
+    end if
+    res = trim(meta)
+
+  end function io_get_meta_str
+
+  subroutine io_input_real_2d(name, array, dataset_name)
+
+    character(*), intent(in) :: name
+    real, intent(out) :: array(:,:)
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+    integer lb1, ub1, lb2, ub2
+    integer i, j, ierr, varid
+    real, allocatable :: buffer(:,:)
+
+    dataset => get_dataset(dataset_name, 'input')
+
+    lb1 = lbound(array, 1) + parallel%lon_halo_width
+    ub1 = ubound(array, 1) - parallel%lon_halo_width
+    lb2 = lbound(array, 2) + parallel%lat_halo_width
+    ub2 = ubound(array, 2) - parallel%lat_halo_width
+    allocate(buffer(lb1:ub1,lb2:ub2))
+
+    ierr = NF90_INQ_VARID(dataset%id, name, varid)
+    if (ierr /= NF90_NOERR) then
+      call log_error('No variable "' // trim(name) // '" in dataset "' // trim(dataset%file_prefix_or_path) // '"!')
+    end if
+    ierr = NF90_GET_VAR(dataset%id, varid, buffer)
+
+    do j = lb2, ub2
+      do i = lb1, ub1
+        array(i,j) = buffer(i,j)
+      end do
+    end do
+
+    deallocate(buffer)
+
+  end subroutine io_input_real_2d
+
+  subroutine io_end_input(dataset_name)
+
+    character(*), intent(in), optional :: dataset_name
+
+    type(dataset_type), pointer :: dataset
+    integer ierr
+
+    dataset => get_dataset(dataset_name, 'input')
+
+    ierr = NF90_CLOSE(dataset%id)
+
+  end subroutine io_end_input
+
+  function get_dataset(name, mode) result(res)
 
     character(*), intent(in), optional :: name
+    character(*), intent(in), optional :: mode
     type(dataset_type), pointer :: res
 
-    character(30) name_
+    character(30) name_, mode_
     class(*), pointer :: value
 
     if (present(name)) then
       name_ = name
     else
-      name_ = 'master'
+      name_ = 'hist0'
     end if
-    value => datasets%value(name_)
+    if (present(mode)) then
+      mode_ = mode
+    else
+      mode_ = 'output'
+    end if
+    value => datasets%value(trim(name_) // '.' // trim(mode_))
     select type (value)
     type is (dataset_type)
       res => value

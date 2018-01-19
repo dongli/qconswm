@@ -13,9 +13,11 @@ module time_mod
   private
 
   public time_init
+  public time_reset_start_time
   public time_swap_indices
   public time_advance
-  public time_ended
+  public time_elapsed_seconds
+  public time_is_finished
   public time_add_alert
   public time_is_alerted
 
@@ -35,6 +37,7 @@ module time_mod
   type(datetime_type) end_time
   type(datetime_type) curr_time
   type(timedelta_type) time_step_size
+  real(8) elapsed_seconds
   type(map_type) alerts
   integer time_step
   integer old_time_idx
@@ -60,6 +63,7 @@ contains
     end if
 
     time_step = 0
+    elapsed_seconds = 0
     old_time_idx = 1
     new_time_idx = 2
     time_step_size = timedelta(seconds=time_step_size_in)
@@ -70,6 +74,18 @@ contains
     curr_time_format = curr_time%isoformat()
 
   end subroutine time_init
+
+  subroutine time_reset_start_time(time)
+
+    type(datetime_type), intent(in) :: time
+
+    start_time = time
+    curr_time = start_time
+
+    start_time_format = start_time%isoformat()
+    curr_time_format = curr_time%isoformat()
+
+  end subroutine time_reset_start_time
 
   subroutine time_swap_indices(i, j)
 
@@ -89,16 +105,23 @@ contains
     call time_swap_indices(old_time_idx, new_time_idx)
 
     time_step = time_step + 1
+    elapsed_seconds = elapsed_seconds + time_step_size%total_seconds()
     curr_time = curr_time + time_step_size
     curr_time_format = curr_time%isoformat()
 
   end subroutine time_advance
 
-  logical function time_ended() result(res)
+  real function time_elapsed_seconds() result(res)
 
-    res = curr_time > end_time
+    res = elapsed_seconds
 
-  end function time_ended
+  end function time_elapsed_seconds
+
+  logical function time_is_finished() result(res)
+
+    res = curr_time >= end_time
+
+  end function time_is_finished
 
   subroutine time_add_alert(name, days, hours, minutes, seconds)
 
@@ -146,11 +169,15 @@ contains
 
     class(*), pointer :: value
 
-    value => alerts%value(name)
-    select type (value)
-    type is (alert_type)
-      res => value
-    end select
+    if (alerts%mapped(name)) then
+      value => alerts%value(name)
+      select type (value)
+      type is (alert_type)
+        res => value
+      end select
+    else
+      nullify(res)
+    end if
 
   end function get_alert
 
