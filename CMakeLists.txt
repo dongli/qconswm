@@ -24,7 +24,7 @@ else ()
   message (FATAL_ERROR "Unable to find pkg-config library!")
 endif ()
 
-find_package (FortranDatetime)
+add_subdirectory (${PROJECT_SOURCE_DIR}/lib/datetime)
 
 set (source_files
   "src/string_mod.F90"
