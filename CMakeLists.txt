@@ -41,5 +41,7 @@ set (source_files
   "src/qconswm.F90"
 )
 
+set (CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}/.mods")
+
 add_executable (qconswm.exe ${source_files})
 target_link_libraries (qconswm.exe fortran_datetime netcdf netcdff)

@@ -39,7 +39,7 @@ module dycore_mod
   type(static_type) static
   type(tend_type) tend(0:2)
 
-  integer, parameter :: half_time_idx = -1
+  integer, parameter :: half_time_idx = 0
 
 contains
 
@@ -73,7 +73,7 @@ contains
       coef%half_dlat(j) = 2.0 * radius * mesh%dlat * mesh%half_cos_lat(j)
     end do
 
-    do time_idx = -1, 2
+    do time_idx = 0, 2
       call allocate_data(state(time_idx))
     end do
     do time_idx = 0, 2
@@ -236,6 +236,7 @@ contains
 
     if (time_is_alerted('restart.output')) then
       call io_add_meta('restart_time', curr_time_format, 'restart')
+      call io_add_meta('elapsed_seconds', time_elapsed_seconds(), 'restart')
       call io_start_output('restart')
       call io_output('lon', mesh%full_lon_deg, 'restart')
       call io_output('ilon', mesh%half_lon_deg, 'restart')
