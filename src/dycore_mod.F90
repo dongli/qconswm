@@ -1,14 +1,15 @@
 module dycore_mod
 
   use ieee_arithmetic
-  use datetime_mod
-  use log_mod
   use params_mod, time_scheme_in => time_scheme, split_scheme_in => split_scheme
+  use log_mod
+  use types_mod
   use mesh_mod
   use time_mod
   use parallel_mod
   use io_mod
-  use types_mod
+  use history_mod
+  use restart_mod
 
   implicit none
 
@@ -55,6 +56,8 @@ contains
     call time_init()
     call parallel_init()
     call io_init()
+    call history_init()
+    call restart_init()
 
     call allocate_data(coef)
     do j = 1, mesh%num_full_lat
@@ -106,46 +109,13 @@ contains
       call log_notice('No fast-slow split.')
     end select
 
-    call io_create_dataset(desc=case_desc, file_prefix=case_name // '.h0')
-    call io_add_meta('use_zonal_coarse', use_zonal_coarse)
-    call io_add_meta('zonal_coarse_factors', pack(zonal_coarse_factors, zonal_coarse_factors /= 0))
-    call io_add_meta('time_step_size', time_step_size)
-    call io_add_meta('time_scheme', time_scheme_in)
-    call io_add_meta('split_scheme', split_scheme_in)
-    call io_add_meta('subcycles', subcycles)
-    call io_add_dim('lon', size=mesh%num_full_lon)
-    call io_add_dim('lat', size=mesh%num_full_lat)
-    call io_add_dim('time')
-    call io_add_var('u', long_name='u wind component', units='m s-1', dim_names=['lon ', 'lat ', 'time'])
-    call io_add_var('v', long_name='v wind component', units='m s-1', dim_names=['lon ', 'lat ', 'time'])
-    call io_add_var('gd', long_name='geopotential depth', units='m2 s-2', dim_names=['lon ', 'lat ', 'time'])
-
-    call io_create_dataset('restart', desc='Restart file', file_prefix=trim(case_name) // '.r', period=restart_period)
-    call io_add_dim('lon', size=mesh%num_full_lon, dataset_name='restart')
-    call io_add_dim('ilon', size=mesh%num_half_lon, dataset_name='restart')
-    call io_add_dim('lat', size=mesh%num_full_lat, dataset_name='restart')
-    call io_add_dim('ilat', size=mesh%num_half_lat, dataset_name='restart')
-    call io_add_dim('time', dataset_name='restart')
-    call io_add_var('u', long_name='u wind component', units='m s-1', dim_names=['ilon', 'lat ', 'time'], dataset_name='restart')
-    call io_add_var('v', long_name='v wind component', units='m s-1', dim_names=['lon ', 'ilat', 'time'], dataset_name='restart')
-    call io_add_var('gd', long_name='geopotential depth', units='m2 s-2', dim_names=['lon ', 'lat ', 'time'], dataset_name='restart')
-
     call log_notice('Dycore module is initialized.')
 
   end subroutine dycore_init
 
   subroutine dycore_restart()
 
-    call io_create_dataset('restart', file_path=restart_file, mode='input')
-    call io_start_input('restart')
-    call time_reset_start_time(datetime(io_get_meta('restart_time', 'restart')))
-    call log_notice('Reset time to ' // trim(curr_time_format) // '.')
-    call io_input('u', state(old_time_idx)%u, 'restart')
-    call parallel_fill_halo(state(old_time_idx)%u(:,:), all_halo=.true.)
-    call io_input('v', state(old_time_idx)%v, 'restart')
-    call parallel_fill_halo(state(old_time_idx)%v(:,:), all_halo=.true.)
-    call io_input('gd', state(old_time_idx)%gd, 'restart')
-    call parallel_fill_halo(state(old_time_idx)%gd(:,:), all_halo=.true.)
+    call restart_read(state(old_time_idx))
 
   end subroutine dycore_restart
 
@@ -177,6 +147,7 @@ contains
 
     call mesh_final()
     call parallel_final()
+    call history_final()
 
     call deallocate_data(coef)
     do time_idx = lbound(state, 1), ubound(state, 1)
@@ -209,44 +180,10 @@ contains
 
   subroutine output(state)
 
-    type(state_type), intent(inout) :: state
+    type(state_type), intent(in) :: state
 
-    integer i, j
-
-    if (time_is_alerted('hist0.output')) then
-      ! Convert wind from C grid to A grid.
-      do j = parallel%full_lat_start_idx, parallel%full_lat_end_idx
-        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-          state%ua(i,j) = 0.5 * (state%u(i,j) + state%u(i-1,j))
-        end do
-      end do
-      do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
-        do i = parallel%full_lon_start_idx, parallel%full_lon_end_idx
-          state%va(i,j) = 0.5 * (state%v(i,j) + state%v(i,j-1))
-        end do
-      end do
-      call io_start_output()
-      call io_output('lon', mesh%full_lon_deg)
-      call io_output('lat', mesh%full_lat_deg)
-      call io_output('u', state%ua)
-      call io_output('v', state%va)
-      call io_output('gd', state%gd)
-      call io_end_output()
-    end if
-
-    if (time_is_alerted('restart.output')) then
-      call io_add_meta('restart_time', curr_time_format, 'restart')
-      call io_add_meta('elapsed_seconds', time_elapsed_seconds(), 'restart')
-      call io_start_output('restart')
-      call io_output('lon', mesh%full_lon_deg, 'restart')
-      call io_output('ilon', mesh%half_lon_deg, 'restart')
-      call io_output('lat', mesh%full_lat_deg, 'restart')
-      call io_output('ilat', mesh%half_lat_deg, 'restart')
-      call io_output('u', state%u, 'restart')
-      call io_output('v', state%v, 'restart')
-      call io_output('gd', state%gd, 'restart')
-      call io_end_output('restart')
-    end if
+    if (time_is_alerted('hist0.output')) call history_write(state)
+    if (time_is_alerted('restart.output')) call restart_write(state)
 
   end subroutine output
 

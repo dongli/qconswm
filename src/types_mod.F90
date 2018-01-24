@@ -44,9 +44,6 @@ module types_mod
     real, allocatable :: v(:,:)
     real, allocatable :: gd(:,:) ! Geopotential depth
     type(iap_type) iap
-    ! Wind on A grid
-    real, allocatable :: ua(:,:)
-    real, allocatable :: va(:,:)
     ! Zonal maximum CFL number
     real, allocatable :: max_cfl(:)
     integer, allocatable :: coarse_factor(:)
@@ -121,8 +118,6 @@ contains
     if (.not. allocated(state%u)) call parallel_allocate(state%u, half_lon=.true.)
     if (.not. allocated(state%v)) call parallel_allocate(state%v, half_lat=.true.)
     if (.not. allocated(state%gd)) call parallel_allocate(state%gd)
-    if (.not. allocated(state%ua)) call parallel_allocate(state%ua)
-    if (.not. allocated(state%va)) call parallel_allocate(state%va)
     if (.not. allocated(state%max_cfl)) call parallel_allocate(state%max_cfl, full_lat=.true.)
     if (.not. allocated(state%coarse_factor)) call parallel_allocate(state%coarse_factor, full_lat=.true.)
     if (.not. allocated(state%coarse_gd)) call parallel_allocate(state%coarse_gd)
@@ -186,8 +181,6 @@ contains
     if (allocated(state%u)) deallocate(state%u)
     if (allocated(state%v)) deallocate(state%v)
     if (allocated(state%gd)) deallocate(state%gd)
-    if (allocated(state%ua)) deallocate(state%ua)
-    if (allocated(state%va)) deallocate(state%va)
     if (allocated(state%max_cfl)) deallocate(state%max_cfl)
     if (allocated(state%coarse_factor)) deallocate(state%coarse_factor)
     if (allocated(state%coarse_gd)) deallocate(state%coarse_gd)
