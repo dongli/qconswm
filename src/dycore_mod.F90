@@ -290,11 +290,12 @@ contains
     real, intent(in) :: dt
     integer, intent(in) :: pass
 
-    real cfl
+    real cfl, mean_dlon
     integer i, j, k
 
     ! Calculate maximum CFL along each zonal circle.
     state%coarse_factor(:) = 1
+    mean_dlon = sum(coef%full_dlon) / mesh%num_full_lat
 !$omp parallel do private(cfl) schedule(static)
     if (use_zonal_coarse) then
       do j = parallel%full_lat_start_idx_no_pole, parallel%full_lat_end_idx_no_pole
@@ -307,12 +308,15 @@ contains
         if (state%max_cfl(j) > 0.2) then
           ! Find coarse_factor based on excess of CFL.
           do k = 1, size(zonal_coarse_factors)
-            if (state%max_cfl(j) < zonal_coarse_factors(k)) then
+            !if (state%max_cfl(j) < zonal_coarse_factors(k)) then
+            if (mean_dlon / coef%full_dlon(j) < zonal_coarse_factors(k)) then
               state%coarse_factor(j) = zonal_coarse_factors(k)
               exit
             end if
             if (zonal_coarse_factors(k) == 0) then
-              call log_error('Insufficient zonal_coarse_factors or time step size is too large!')
+              ! call log_warning('Insufficient zonal_coarse_factors or time step size is too large!')
+              state%coarse_factor(j) = zonal_coarse_factors(k - 1)
+              exit
             end if
           end do
           call fine_array_to_coarse_array(state%gd(:,j), state%coarse_gd(:,j), state%coarse_factor(j))
